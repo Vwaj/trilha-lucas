@@ -24,15 +24,23 @@ async function toggleFullscreen() {
 document.addEventListener("fullscreenchange", updateFullscreenBtn);
 document.getElementById("btn-fullscreen").addEventListener("click", toggleFullscreen);
 
-/* ---------------- botão de som (música + efeitos) ---------------- */
-function updateAudioBtn() {
-  document.getElementById("btn-audio").textContent = audioEnabled ? "🔊" : "🔇";
+/* ---------------- botões de som (música e efeitos, separados) ---------------- */
+function updateMusicBtn() {
+  document.getElementById("btn-music").textContent = musicEnabled ? "🎵" : "🔇";
 }
-document.getElementById("btn-audio").addEventListener("click", () => {
-  toggleAudio();
-  updateAudioBtn();
+function updateSfxBtn() {
+  document.getElementById("btn-sfx").textContent = sfxEnabled ? "🔊" : "🔈";
+}
+document.getElementById("btn-music").addEventListener("click", () => {
+  toggleMusic();
+  updateMusicBtn();
 });
-updateAudioBtn();
+document.getElementById("btn-sfx").addEventListener("click", () => {
+  toggleSfx();
+  updateSfxBtn();
+});
+updateMusicBtn();
+updateSfxBtn();
 
 /* ---------------- retorno tátil (vibração leve) ---------------- */
 function vibrate(pattern) {

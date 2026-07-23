@@ -107,7 +107,8 @@ input, textarea{ font-family:inherit; }
 
 /* ================= TOPBAR / HOME ================= */
 .topbar{ display:flex; align-items:center; justify-content:space-between; padding-top:6px; }
-.topbar-right{ display:flex; align-items:center; gap:8px; }
+.topbar-right{ display:flex; align-items:center; gap:6px; }
+.topbar-right .icon-btn{ width:34px; height:34px; font-size:14px; }
 .player-chip{ display:flex; align-items:center; gap:10px; }
 .player-avatar{
   width:52px; height:52px; border-radius:16px; background:var(--surface); border:2px solid var(--border-soft);
