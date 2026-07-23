@@ -14,9 +14,9 @@
    ============================================================ */
 
 const EMAIL_CONFIG = {
-  enabled: true, // troque para true depois de preencher tudo abaixo
-  publicKey: "Ol7NwW2cZBbLw6U7p",
-  serviceId: "service_m4ust58",
-  templateId: "service_m4ust58",
-  toEmail: "vlademirwaj@gmail.com",
+  enabled: false, // troque para true depois de preencher tudo abaixo
+  publicKey: "SUA_PUBLIC_KEY_AQUI",
+  serviceId: "SEU_SERVICE_ID_AQUI",
+  templateId: "SEU_TEMPLATE_ID_AQUI",
+  toEmail: "seuemail@exemplo.com",
 };

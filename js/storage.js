@@ -17,8 +17,13 @@ const DEFAULT_STATE = {
   lastStudyDate: null, // ISO date string (yyyy-mm-dd)
   badges: [], // ["first_mission", "streak_3", ...]
   completedMissions: [], // mission ids
+  completedRecaps: [], // fase ids whose recap was completed
   boxes: {}, // exerciseId -> box number (1,2,3)
   history: [], // {date, correct, wrong} sessions log (kept short)
+  lastTriviaDate: null, // ISO date of last daily-trivia completion
+  triviaCursor: [], // shuffled remaining trivia ids for the current cycle
+  triviaCompletedCount: 0,
+  feynmanCount: 0,
 };
 
 function loadState() {
@@ -91,6 +96,8 @@ const BADGE_DEFS = {
   level_5: { icon: "⭐", label: "Chegou ao nível 5" },
   prova_100: { icon: "🏆", label: "100% em uma prova" },
   feynman_5: { icon: "🧠", label: "5 explicações no Modo Ensine" },
+  first_fase: { icon: "🚩", label: "Primeira fase concluída" },
+  trivia_5: { icon: "💡", label: "5 dias de curiosidades" },
 };
 
 function grantBadge(state, id) {

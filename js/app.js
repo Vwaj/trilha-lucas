@@ -139,42 +139,63 @@ function initOnboarding() {
 }
 
 /* ================= HOME ================= */
-function missionStatus(subject, missionIndex) {
-  const mission = subject.missions[missionIndex];
-  if (state.completedMissions.includes(mission.id)) return "done";
-  const prevMission = subject.missions[missionIndex - 1];
-  if (!prevMission || state.completedMissions.includes(prevMission.id)) return "current";
-  return "locked";
+let selectedSubjectId = null;
+
+function renderSubjectTabs() {
+  const wrap = document.getElementById("subject-tabs");
+  wrap.innerHTML = "";
+  if (!selectedSubjectId) selectedSubjectId = QUEST_DATA.subjects[0].id;
+  QUEST_DATA.subjects.forEach((subject) => {
+    const btn = document.createElement("button");
+    btn.className = "subject-tab" + (subject.id === selectedSubjectId ? " is-active" : "");
+    btn.innerHTML = `<span>${subject.icon}</span> ${subject.name}`;
+    btn.addEventListener("click", () => {
+      selectedSubjectId = subject.id;
+      renderSubjectTabs();
+      renderTrail();
+    });
+    wrap.appendChild(btn);
+  });
 }
 
 function renderTrail() {
   const trail = document.getElementById("trail");
   trail.innerHTML = "";
-  QUEST_DATA.subjects.forEach((subject) => {
+  const subject = QUEST_DATA.subjects.find((s) => s.id === selectedSubjectId) || QUEST_DATA.subjects[0];
+  const steps = subjectStepsWithStatus(subject, state);
+
+  subject.fases.forEach((fase) => {
+    const faseSteps = steps.filter((s) => s.fase.id === fase.id);
+    const faseDone = faseSteps.every((s) => s.status === "done");
+    const faseLocked = faseSteps.every((s) => s.status === "locked");
+
     const wrap = document.createElement("div");
     wrap.className = "trail-subject";
-    wrap.innerHTML = `<div class="trail-subject-head"><span class="trail-subject-icon">${subject.icon}</span> ${subject.name}</div>`;
+    wrap.innerHTML = `<div class="trail-subject-head">${fase.title}${faseDone ? " ✅" : ""}</div>`;
     const row = document.createElement("div");
-    row.className = "trail-row";
+    row.className = "trail-row" + (faseLocked ? " is-fase-locked" : "");
 
-    subject.missions.forEach((mission, i) => {
-      const status = missionStatus(subject, i);
+    faseSteps.forEach((step, i) => {
       const node = document.createElement("div");
-      node.className = "trail-node is-" + status;
-      node.innerHTML = status === "done" ? "✓" : (i + 1);
-      node.title = mission.title;
+      const isRecap = step.type === "recap";
+      node.className = "trail-node is-" + step.status + (isRecap ? " is-recap" : "");
+      node.innerHTML = step.status === "done" ? "✓" : isRecap ? "📝" : (i + 1);
+      node.title = isRecap ? "Recapitulação" : step.mission.title;
       const label = document.createElement("div");
       label.className = "trail-node-label";
-      label.textContent = mission.title;
+      label.textContent = isRecap ? "Recapitulação" : step.mission.title;
       node.appendChild(label);
 
-      if (status !== "locked") {
-        node.addEventListener("click", () => startMission(subject, mission));
+      if (step.status !== "locked") {
+        node.addEventListener("click", () => {
+          if (isRecap) startRecap(subject, fase);
+          else startMission(subject, step.mission);
+        });
       }
       row.appendChild(node);
-      if (i < subject.missions.length - 1) {
+      if (i < faseSteps.length - 1) {
         const conn = document.createElement("div");
-        conn.className = "trail-connector" + (status === "done" ? " is-done" : "");
+        conn.className = "trail-connector" + (step.status === "done" ? " is-done" : "");
         row.appendChild(conn);
       }
     });
@@ -191,6 +212,7 @@ function renderHome() {
   document.getElementById("home-streak").textContent = state.streak;
   document.getElementById("xp-fill").style.width = Math.round((lv.into / lv.need) * 100) + "%";
   document.getElementById("xp-label").textContent = `${lv.into} / ${lv.need} XP`;
+  renderSubjectTabs();
   renderTrail();
 
   const allEx = collectAllExercises();
@@ -198,11 +220,23 @@ function renderHome() {
   document.getElementById("review-count").textContent = dueCount;
 }
 
+/* pula a tela inicial pela porta certa: se ainda não fez as curiosidades
+   de hoje, mostra a Trilha de Curiosidades antes de liberar a Home */
+function goHome() {
+  if (dailyTriviaDue()) {
+    startDailyTrivia();
+  } else {
+    renderHome();
+    showScreen("screen-home");
+  }
+}
+
 /* ================= RUNNER (missão / revisão) ================= */
 const runner = {
-  mode: null, // 'mission' | 'review'
+  mode: null, // 'mission' | 'review' | 'recap'
   mission: null,
   subject: null,
+  fase: null,
   queue: [],
   index: 0,
   correct: 0,
@@ -225,7 +259,7 @@ function startMission(subject, mission) {
 
   document.getElementById("runner-intro-icon").textContent = subject.icon;
   document.getElementById("runner-intro-title").textContent = mission.title;
-  document.getElementById("runner-intro-text").textContent = mission.explanation;
+  document.getElementById("runner-intro-text").innerHTML = mission.explanation;
   document.getElementById("runner-intro").classList.remove("hidden");
   document.getElementById("runner-quiz").classList.add("hidden");
   document.getElementById("runner-summary").classList.add("hidden");
@@ -256,6 +290,32 @@ function startReview() {
   document.getElementById("runner-intro-title").textContent = "Revisão Inteligente";
   document.getElementById("runner-intro-text").textContent =
     "Estas são as perguntas que mais precisam da sua atenção agora — as que você errou aparecem com mais frequência, até você dominá-las de vez.";
+  document.getElementById("runner-intro").classList.remove("hidden");
+  document.getElementById("runner-quiz").classList.add("hidden");
+  document.getElementById("runner-summary").classList.add("hidden");
+  document.getElementById("runner-hearts").textContent = "❤️❤️❤️";
+  document.getElementById("runner-session-xp").textContent = "✨ 0 XP nesta sessão";
+  updateRunnerProgress();
+  showScreen("screen-runner");
+}
+
+function startRecap(subject, fase) {
+  const queue = buildFaseRecap(fase, 8);
+  runner.mode = "recap";
+  runner.mission = null;
+  runner.subject = subject;
+  runner.fase = fase;
+  runner.queue = queue;
+  runner.index = 0;
+  runner.correct = 0;
+  runner.wrong = 0;
+  runner.hearts = 3;
+  runner.sessionXP = 0;
+
+  document.getElementById("runner-intro-icon").textContent = "📝";
+  document.getElementById("runner-intro-title").textContent = "Recapitulação: " + fase.title;
+  document.getElementById("runner-intro-text").innerHTML =
+    "Vamos revisar tudo que você aprendeu nesta fase! Complete para liberar a próxima fase e ganhar um <b>bônus extra de +100 XP</b>. 🎁";
   document.getElementById("runner-intro").classList.remove("hidden");
   document.getElementById("runner-quiz").classList.add("hidden");
   document.getElementById("runner-summary").classList.add("hidden");
@@ -312,6 +372,7 @@ function renderRunnerQuestion() {
   } else {
     optsWrap.classList.add("hidden");
     textInput.classList.remove("hidden");
+    textInput.disabled = false;
     textInput.value = "";
   }
   updateRunnerProgress();
@@ -362,8 +423,8 @@ document.getElementById("btn-runner-check").addEventListener("click", () => {
     fb.textContent = "✅ Isso aí! Resposta certa.";
     vibrate(35);
     sfxCorrect();
-    addXP(10);
-    runner.sessionXP += 10;
+    addXP(15);
+    runner.sessionXP += 15;
   } else {
     runner.wrong++;
     runner.hearts = Math.max(0, runner.hearts - 1);
@@ -373,8 +434,8 @@ document.getElementById("btn-runner-check").addEventListener("click", () => {
     fb.textContent = `❌ Quase! A resposta certa é: ${correctText}. ${ex.hint ? "💡 " + ex.hint : ""}`;
     vibrate([30, 60, 30]);
     sfxWrong();
-    addXP(2);
-    runner.sessionXP += 2;
+    addXP(3);
+    runner.sessionXP += 3;
   }
   document.getElementById("runner-session-xp").textContent = `✨ ${runner.sessionXP} XP nesta sessão`;
   saveState(state);
@@ -405,18 +466,32 @@ function finishRunner() {
         if (b) setTimeout(() => showToast(b.label, b.icon), 400);
       }
     }
+  } else if (runner.mode === "recap") {
+    const recapId = runner.fase.id + "-recap";
+    if (!state.completedRecaps.includes(recapId)) {
+      state.completedRecaps.push(recapId);
+      addXP(100);
+      runner.sessionXP += 100;
+      if (state.completedRecaps.length === 1) {
+        const b = grantBadge(state, "first_fase");
+        if (b) setTimeout(() => showToast(b.label, b.icon), 900);
+      }
+      setTimeout(() => showToast("Bônus de fase: +100 XP! 🎁", "🎉"), 500);
+    }
   }
   registerStudyToday(state);
   checkStreakBadges();
   saveState(state);
   sfxComplete();
 
-  const xpGainedThisSession = runner.correct * 10 + runner.wrong * 2;
+  const xpGainedThisSession = runner.sessionXP;
   const lv = levelFromXP(state.xp);
+  const modeLabel = runner.mode === "mission" ? "Missão" : runner.mode === "recap" ? "Recapitulação" : "Revisão";
+  const titleLabel = runner.mode === "mission" ? runner.mission.title : runner.mode === "recap" ? runner.fase.title : "Revisão inteligente";
   sendSessionReport({
     studentName: state.profile.name,
-    mode: runner.mode === "mission" ? "Missão" : "Revisão",
-    title: runner.mode === "mission" ? runner.mission.title : "Revisão inteligente",
+    mode: modeLabel,
+    title: titleLabel,
     correct: runner.correct,
     wrong: runner.wrong,
     xpGained: xpGainedThisSession,
@@ -444,8 +519,7 @@ function checkStreakBadges() {
 }
 
 document.getElementById("btn-runner-finish").addEventListener("click", () => {
-  renderHome();
-  showScreen("screen-home");
+  goHome();
 });
 
 document.getElementById("btn-exit-runner").addEventListener("click", () => {
@@ -453,8 +527,7 @@ document.getElementById("btn-exit-runner").addEventListener("click", () => {
     if (!confirm("Sair agora? O progresso desta sessão não será salvo.")) return;
   }
   releaseWakeLock();
-  renderHome();
-  showScreen("screen-home");
+  goHome();
 });
 
 /* ================= EXAM MODE ================= */
@@ -588,7 +661,7 @@ function finalizeExam() {
   document.getElementById("exam-score").textContent = `${correctCount}/${exam.queue.length}`;
   document.getElementById("exam-review").innerHTML = reviewHTML;
 
-  const xpGain = correctCount * 15;
+  const xpGain = correctCount * 20;
   addXP(xpGain);
   registerStudyToday(state);
   sfxComplete();
@@ -613,8 +686,7 @@ function finalizeExam() {
 }
 
 document.getElementById("btn-exam-finish").addEventListener("click", () => {
-  renderHome();
-  showScreen("screen-home");
+  goHome();
 });
 document.getElementById("btn-exit-exam").addEventListener("click", () => {
   if (exam.index > 0 && exam.index < exam.queue.length) {
@@ -622,8 +694,7 @@ document.getElementById("btn-exit-exam").addEventListener("click", () => {
   }
   clearInterval(exam.timer);
   releaseWakeLock();
-  renderHome();
-  showScreen("screen-home");
+  goHome();
 });
 
 /* ================= FEYNMAN MODE ================= */
@@ -678,7 +749,7 @@ document.getElementById("btn-feynman-submit").addEventListener("click", () => {
   document.getElementById("feynman-feedback-text").innerHTML = msg;
 
   state.feynmanCount = (state.feynmanCount || 0) + 1;
-  addXP(15);
+  addXP(20);
   registerStudyToday(state);
   sfxComplete();
   if (state.feynmanCount >= 5) {
@@ -694,7 +765,7 @@ document.getElementById("btn-feynman-submit").addEventListener("click", () => {
     title: feynmanCurrent.title,
     correct: found.length,
     wrong: feynmanCurrent.keywords.length - found.length,
-    xpGained: 15,
+    xpGained: 20,
     totalXp: state.xp,
     level: lv.level,
     streak: state.streak,
@@ -702,10 +773,93 @@ document.getElementById("btn-feynman-submit").addEventListener("click", () => {
 });
 
 document.getElementById("btn-feynman-finish").addEventListener("click", () => {
+  goHome();
+});
+document.getElementById("btn-exit-feynman").addEventListener("click", () => {
+  goHome();
+});
+
+/* ================= DAILY TRIVIA (curiosidades do dia) ================= */
+function dailyTriviaDue() {
+  return state.lastTriviaDate !== todayISO();
+}
+
+const trivia = { queue: [], index: 0, correctCount: 0 };
+
+function startDailyTrivia() {
+  trivia.queue = pickDailyTrivia(state, 5);
+  trivia.index = 0;
+  trivia.correctCount = 0;
+  saveState(state); // persiste o consumo do triviaCursor
+  document.getElementById("trivia-quiz").classList.remove("hidden");
+  document.getElementById("trivia-summary").classList.add("hidden");
+  renderTriviaQuestion();
+  showScreen("screen-trivia");
+}
+
+function renderTriviaQuestion() {
+  const item = trivia.queue[trivia.index];
+  document.getElementById("trivia-progress-fill").style.width = (trivia.index / trivia.queue.length) * 100 + "%";
+  document.getElementById("trivia-category").textContent = item.category;
+  document.getElementById("trivia-text").textContent = item.text;
+  document.getElementById("trivia-feedback").classList.add("hidden");
+  document.getElementById("trivia-buttons").classList.remove("hidden");
+  document.getElementById("btn-trivia-next").classList.add("hidden");
+}
+
+function checkTriviaAnswer(userSaysTrue) {
+  const item = trivia.queue[trivia.index];
+  const correct = userSaysTrue === item.isTrue;
+  if (correct) {
+    trivia.correctCount++;
+    addXP(8);
+    vibrate(35);
+    sfxCorrect();
+  } else {
+    addXP(3);
+    vibrate([30, 60, 30]);
+    sfxWrong();
+  }
+  document.getElementById("trivia-buttons").classList.add("hidden");
+  const fb = document.getElementById("trivia-feedback");
+  fb.classList.remove("hidden", "ok", "bad");
+  fb.classList.add(correct ? "ok" : "bad");
+  fb.innerHTML = (correct ? "✅ Isso mesmo! " : "❌ Na verdade, não. ") + item.explain;
+  document.getElementById("btn-trivia-next").classList.remove("hidden");
+  saveState(state);
+}
+document.getElementById("btn-trivia-true").addEventListener("click", () => checkTriviaAnswer(true));
+document.getElementById("btn-trivia-false").addEventListener("click", () => checkTriviaAnswer(false));
+
+document.getElementById("btn-trivia-next").addEventListener("click", () => {
+  trivia.index++;
+  if (trivia.index >= trivia.queue.length) finishTrivia();
+  else renderTriviaQuestion();
+});
+
+function finishTrivia() {
+  state.lastTriviaDate = todayISO();
+  state.triviaCompletedCount = (state.triviaCompletedCount || 0) + 1;
+  addXP(15);
+  sfxComplete();
+  if (state.triviaCompletedCount >= 5) {
+    const b = grantBadge(state, "trivia_5");
+    if (b) setTimeout(() => showToast(b.label, b.icon), 500);
+  }
+  saveState(state);
+  document.getElementById("trivia-quiz").classList.add("hidden");
+  document.getElementById("trivia-summary").classList.remove("hidden");
+  document.getElementById("trivia-summary-stats").textContent =
+    `Você acertou ${trivia.correctCount} de ${trivia.queue.length}. Sua trilha de estudo já está liberada!`;
+}
+
+document.getElementById("btn-trivia-finish").addEventListener("click", () => {
   renderHome();
   showScreen("screen-home");
 });
-document.getElementById("btn-exit-feynman").addEventListener("click", () => {
+document.getElementById("btn-trivia-skip").addEventListener("click", () => {
+  state.lastTriviaDate = todayISO();
+  saveState(state);
   renderHome();
   showScreen("screen-home");
 });
@@ -714,7 +868,7 @@ document.getElementById("btn-exit-feynman").addEventListener("click", () => {
 document.getElementById("btn-review").addEventListener("click", startReview);
 
 /* ================= PROFILE ================= */
-const BADGE_ORDER = ["first_mission", "streak_3", "streak_7", "level_5", "prova_100", "feynman_5"];
+const BADGE_ORDER = ["first_mission", "first_fase", "streak_3", "streak_7", "level_5", "prova_100", "feynman_5", "trivia_5"];
 
 function renderProfile() {
   document.getElementById("profile-avatar").textContent = state.profile.avatar;
@@ -748,7 +902,7 @@ document.getElementById("btn-reset").addEventListener("click", () => {
 document.querySelectorAll(".nav-btn").forEach((btn) => {
   btn.addEventListener("click", () => {
     const target = btn.dataset.nav;
-    if (target === "home") { renderHome(); showScreen("screen-home"); }
+    if (target === "home") { goHome(); }
     if (target === "profile") { renderProfile(); showScreen("screen-profile"); }
   });
 });
@@ -756,8 +910,7 @@ document.querySelectorAll(".nav-btn").forEach((btn) => {
 /* ================= INIT ================= */
 function init() {
   if (state.profile && state.profile.name) {
-    renderHome();
-    showScreen("screen-home");
+    goHome();
   } else {
     initOnboarding();
     showScreen("screen-onboarding");

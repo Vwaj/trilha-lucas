@@ -60,6 +60,7 @@
   </div>
 
   <div class="section-title">Sua trilha de hoje</div>
+  <div id="subject-tabs" class="subject-tabs"></div>
   <div id="trail" class="trail"></div>
 
   <div class="quick-actions">
@@ -82,6 +83,39 @@
     <button class="nav-btn is-active" data-nav="home">🏠<span>Início</span></button>
     <button class="nav-btn" data-nav="profile">🎒<span>Perfil</span></button>
   </nav>
+</section>
+
+<!-- ===================== DAILY TRIVIA (curiosidades do dia) ===================== -->
+<section id="screen-trivia" class="screen">
+  <header class="runner-top">
+    <div class="trivia-header-icon">💡</div>
+    <div class="runner-progress"><div id="trivia-progress-fill" class="runner-progress-fill trivia-fill"></div></div>
+    <div style="width:38px"></div>
+  </header>
+
+  <div id="trivia-quiz" class="runner-quiz">
+    <div class="section-title" style="margin-top:4px">Curiosidades do dia</div>
+    <div id="trivia-category" class="trivia-category">Categoria</div>
+    <div id="trivia-text" class="trivia-text">Texto da curiosidade aparece aqui.</div>
+    <div class="trivia-question">Verdade ou mentira?</div>
+
+    <div id="trivia-buttons" class="trivia-buttons">
+      <button id="btn-trivia-true" class="btn btn-trivia btn-trivia-true">✅ Verdade</button>
+      <button id="btn-trivia-false" class="btn btn-trivia btn-trivia-false">❌ Mentira</button>
+    </div>
+
+    <div id="trivia-feedback" class="runner-feedback hidden"></div>
+    <button id="btn-trivia-next" class="btn btn-primary btn-lg hidden">Continuar</button>
+
+    <button id="btn-trivia-skip" class="btn btn-ghost">Pular por hoje</button>
+  </div>
+
+  <div id="trivia-summary" class="runner-summary hidden">
+    <div class="runner-summary-icon">💡</div>
+    <h2 class="runner-summary-title">Curiosidades concluídas!</h2>
+    <div id="trivia-summary-stats" class="runner-intro-text"></div>
+    <button id="btn-trivia-finish" class="btn btn-primary btn-lg">Ir para a trilha</button>
+  </div>
 </section>
 
 <!-- ===================== MISSION / REVIEW (shared runner) ===================== -->
