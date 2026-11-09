@@ -1,0 +1,552 @@
+<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="apple-touch-icon" href="../icons/icon-192.png">
+<meta name="apple-mobile-web-app-title" content="Passaporte">
+<style>*,*::before,*::after{box-sizing:border-box}:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);box-sizing:border-box;height:100%}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+</head><body>
+<title>Passaporte do Luquinhas</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bungee&family=Lexend:wght@400;500;700&family=DM+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: painel de embarque de aeroporto (mapa) + cartões de embarque em papel (slides e jogos). Visual único, sem tema claro/escuro. */
+:root{
+  color-scheme:dark;
+  --night:#101B3D; --board:#1A2A57; --flap:#24386F; --line:#3A5196;
+  --amber:#FFC53D; --coral:#FF6F59; --sky:#67C9FF; --mint:#43DDA0;
+  --paper:#FFF8E7; --paper2:#F3E7CB; --ink:#16214A; --muted:#5B6488; --onboard:#D8E0FA;
+  --okbg:#D2F6E6; --okink:#0B6245; --badbg:#FFDDD6; --badink:#A32A17;
+  --display:"Bungee","Arial Black",Impact,sans-serif;
+  --body:"Lexend","Trebuchet MS",Verdana,sans-serif;
+  --mono:"DM Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+html,body{height:100%}
+body{background:var(--night);color:var(--onboard);font-family:var(--body);font-size:17px;line-height:1.45}
+button{font:inherit;color:inherit;cursor:pointer;border:0;background:none}
+button:disabled{cursor:not-allowed;opacity:.45}
+:focus-visible{outline:3px solid var(--amber);outline-offset:2px}
+#app{height:100%;display:flex;flex-direction:column;min-height:0}
+.scroll{flex:1;min-height:0;overflow-y:auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:18px 28px}
+.wrap{max-width:900px;margin-inline:auto;display:flex;flex-direction:column;gap:20px}
+
+/* painel */
+.flaps{display:flex;flex-wrap:wrap;gap:3px}
+.flap{font-family:var(--display);color:var(--amber);background:var(--flap);width:clamp(27px,7.4vw,56px);height:clamp(38px,10vw,74px);display:grid;place-items:center;font-size:clamp(20px,6vw,44px);border-radius:4px;position:relative;box-shadow:inset 0 -2px 0 #0003}
+.flap::after{content:"";position:absolute;inset:50% 0 auto;height:2px;background:var(--night)}
+.flap.sp{background:none;box-shadow:none;width:clamp(8px,2vw,16px)}.flap.sp::after{display:none}
+.flap{animation:flip .5s both;animation-delay:calc(var(--i)*35ms)}
+@keyframes flip{from{transform:rotateX(85deg)}to{transform:none}}
+.hero{display:flex;flex-direction:column;gap:6px}
+.eyebrow{font-family:var(--mono);letter-spacing:.12em;text-transform:uppercase;font-size:13px;color:var(--sky)}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.stat{background:var(--board);padding:10px 12px;border-radius:6px;min-width:0}
+.stat b{display:block;font-family:var(--display);font-weight:400;font-size:clamp(22px,5vw,32px);color:var(--amber);font-variant-numeric:tabular-nums}
+.stat span{font-family:var(--mono);font-size:12px;letter-spacing:.04em}
+.howto{background:var(--board);border-radius:6px;padding:0 14px}
+.howto summary{cursor:pointer;padding:12px 0;font-weight:700;color:var(--amber)}
+.howto ol{margin:0 0 14px;padding-left:20px;display:grid;gap:6px}
+.line h2{font-family:var(--display);font-weight:400;font-size:clamp(17px,4vw,22px);color:#fff;margin:0;text-wrap:balance}
+.line p{margin:0 0 8px;font-size:14px}
+.rows{display:grid;gap:4px}
+.row{display:grid;grid-template-columns:62px minmax(0,1fr) auto;gap:10px;align-items:center;text-align:left;background:var(--board);padding:11px 12px;border-radius:5px;min-height:58px}
+.row:hover{background:var(--flap)}
+.row .code{font-family:var(--mono);color:var(--sky);font-size:14px}
+.row .dest{font-weight:700;color:#fff;min-width:0}
+.row .dest small{display:block;font-weight:400;color:var(--onboard);font-size:13px}
+.st{font-family:var(--mono);font-size:12px;padding:4px 8px;border-radius:3px;white-space:nowrap;color:var(--onboard);border:1px solid var(--line)}
+.st.next{background:var(--amber);color:var(--night);border-color:var(--amber);font-weight:500;animation:blink 1.4s infinite}
+.st.done{background:none;color:var(--mint);border-color:var(--mint)}
+@keyframes blink{50%{opacity:.6}}
+.extras{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.extra{background:var(--flap);border-radius:6px;padding:14px;text-align:left;min-height:88px;display:flex;flex-direction:column;gap:2px}
+.extra.big{grid-column:1/-1;background:var(--coral);color:var(--night)}
+.extra b{font-family:var(--display);font-weight:400;font-size:18px;color:#fff}
+.extra.big b{color:var(--night);font-size:22px}
+.extra span{font-size:14px}
+.reset{font-size:13px;color:var(--onboard);text-decoration:underline;align-self:center;padding:8px}
+
+/* barra da aula */
+.top{display:flex;align-items:center;gap:8px;padding-block:8px;padding-left:max(12px,env(safe-area-inset-left,0px));padding-right:max(12px,env(safe-area-inset-right,0px));background:var(--board)}
+.top .ttl{flex:1;min-width:0;font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.top .ttl small{font-family:var(--mono);font-weight:400;color:var(--sky);margin-right:6px}
+.ico{min-height:40px;min-width:40px;padding:0 10px;border-radius:5px;background:var(--flap);color:#fff;font-size:14px;white-space:nowrap}
+.ico[aria-pressed="false"]{opacity:.6}
+.miles{font-family:var(--mono);color:var(--amber);font-size:14px;white-space:nowrap}
+.bottom{display:flex;align-items:center;gap:10px;padding-block:8px;padding-left:max(12px,env(safe-area-inset-left,0px));padding-right:max(12px,env(safe-area-inset-right,0px));background:var(--board)}
+.nav{min-height:46px;padding:0 16px;border-radius:6px;font-weight:700;background:var(--flap);color:#fff}
+.nav.go{background:var(--amber);color:var(--night)}
+.route{flex:1;min-width:0;height:24px;position:relative}
+.route::before{content:"";position:absolute;left:0;right:0;top:50%;border-top:2px dashed var(--line)}
+.plane{position:absolute;top:0;font-size:18px;line-height:24px;transform:translateX(-50%);transition:left .35s}
+
+/* cartão */
+.pass{background:var(--paper);color:var(--ink);border-radius:12px;display:flex;flex-direction:column;min-width:0}
+.stub{display:flex;justify-content:space-between;gap:10px;font-family:var(--mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);padding:12px 20px;border-bottom:2px dashed var(--paper2)}
+.body{padding:20px;display:flex;flex-direction:column;gap:16px;min-width:0}
+.body h1{font-family:var(--display);font-weight:400;font-size:clamp(24px,5.2vw,40px);line-height:1.1;margin:0;color:var(--ink);text-wrap:balance}
+.body p{margin:0;max-width:62ch;font-size:clamp(17px,2.6vw,21px)}
+.body ul.big{margin:0;padding-left:22px;display:grid;gap:8px;font-size:clamp(17px,2.6vw,21px)}
+mark{background:var(--amber);color:var(--ink);padding:0 4px;border-radius:3px}
+.note{background:var(--board);border-left:4px solid var(--amber);padding:10px 14px;border-radius:4px;font-size:15px}
+.note b{color:var(--amber);font-family:var(--mono);font-weight:500;margin-right:6px}
+
+.formula{display:flex;flex-wrap:wrap;gap:6px}
+.chip{display:flex;flex-direction:column;align-items:center;padding:8px 14px;border-radius:7px;font-weight:700;font-size:clamp(18px,3.4vw,27px);color:var(--ink)}
+.chip small{font-family:var(--mono);font-weight:400;font-size:11px;letter-spacing:.04em}
+.c-s{background:var(--sky)}.c-v{background:var(--coral)}.c-c{background:var(--mint)}.c-h{background:var(--amber)}.c-q{background:#D3B6FF}
+.ex{display:grid;gap:6px}
+.exrow{display:grid;grid-template-columns:44px minmax(0,1fr);gap:10px;align-items:center;text-align:left;background:var(--paper2);padding:8px 12px 8px 8px;border-radius:7px;color:var(--ink)}
+.exrow .sp{width:40px;height:40px;border-radius:50%;background:var(--ink);color:var(--paper);display:grid;place-items:center;font-size:14px}
+.exrow .en{font-weight:700;font-size:clamp(17px,2.8vw,22px)}
+.exrow .pt{font-size:15px;color:var(--muted)}
+.tbl{overflow-x:auto}
+.tbl table{border-collapse:collapse;width:100%;font-size:clamp(15px,2.4vw,19px)}
+.tbl th{text-align:left;background:var(--ink);color:var(--paper);font-family:var(--mono);font-weight:400;font-size:13px;padding:7px 10px}
+.tbl td{padding:7px 10px;border-bottom:1px solid var(--paper2)}
+
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+.card{background:var(--paper2);color:var(--ink);border-radius:8px;padding:10px;min-height:128px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;text-align:center}
+.card:hover{background:#ecdcb7}
+.card .pic{font-size:34px;line-height:1.2}
+.card .w{font-weight:700;font-size:20px;line-height:1.15}
+.card .pr{font-family:var(--mono);font-size:13px;color:var(--muted)}
+.card .tr{font-size:15px;font-weight:700;color:var(--okink);min-height:22px}
+.card:not(.open) .tr{color:var(--muted);font-weight:400}
+.count{font-family:var(--mono);font-size:13px;color:var(--muted)}
+
+/* jogo */
+.score{display:flex;align-items:center;justify-content:space-between;gap:10px;font-family:var(--mono);font-size:14px;color:var(--ink);background:var(--paper2);padding:8px 12px;border-radius:7px}
+.score b{font-family:var(--display);font-weight:400;font-size:22px}
+.bar{height:8px;background:var(--paper2);border-radius:4px;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--coral);transition:width .3s}
+.prompt{font-size:clamp(20px,3.6vw,30px);font-weight:700;line-height:1.25;text-wrap:balance}
+.passage{background:var(--paper2);padding:12px 14px;border-radius:7px;font-size:17px;line-height:1.55}
+.opts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.opt{background:var(--ink);color:var(--paper);min-height:62px;padding:10px;border-radius:8px;font-weight:700;font-size:clamp(16px,2.8vw,21px);overflow-wrap:anywhere}
+.opt.ok{background:var(--mint);color:var(--ink)}.opt.bad{background:var(--coral);color:var(--ink)}
+.opt:disabled{opacity:1}.opt.dim{opacity:.4}
+.slot{min-height:64px;background:var(--paper2);border-radius:8px;padding:8px;display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.slot:empty::before{content:"Toque nas palavras na ordem certa";color:var(--muted);font-size:15px;padding-left:6px}
+.tiles{display:flex;flex-wrap:wrap;gap:6px;justify-content:center}
+.tile{background:var(--ink);color:var(--paper);min-height:48px;min-width:44px;padding:0 14px;border-radius:7px;font-weight:700;font-size:clamp(17px,2.8vw,22px)}
+.slot .tile{background:var(--sky);color:var(--ink)}
+.tile.used{visibility:hidden}
+.act{align-self:center;min-height:52px;padding:0 30px;border-radius:8px;font-weight:700;background:var(--coral);color:var(--ink);font-size:18px}
+.ptline{font-size:clamp(19px,3.2vw,26px);font-weight:700}
+.fb{padding:12px 14px;border-radius:8px;font-size:17px;display:grid;gap:8px}
+.fb.ok{background:var(--okbg);color:var(--okink)}.fb.bad{background:var(--badbg);color:var(--badink)}
+.fb .act{justify-self:end;background:var(--ink);color:var(--paper)}
+.pair{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.pair>div{display:grid;gap:6px;align-content:start}
+.pairb{background:var(--paper2);color:var(--ink);min-height:54px;padding:6px 8px;border-radius:7px;font-weight:700;font-size:clamp(15px,2.6vw,19px);overflow-wrap:anywhere}
+.pairb.sel{background:var(--amber)}.pairb.hit{background:var(--okbg);color:var(--okink);opacity:.65}.pairb.miss{background:var(--coral)}
+.bigword{font-family:var(--display);font-size:clamp(34px,9vw,64px);text-align:center;line-height:1.1;overflow-wrap:anywhere}
+.listen{align-self:center;width:112px;height:112px;border-radius:50%;background:var(--coral);color:var(--ink);font-weight:700;font-size:16px}
+.link{align-self:center;color:var(--muted);text-decoration:underline;font-size:14px;padding:6px}
+.saybtns{display:flex;flex-wrap:wrap;gap:8px;justify-content:center}
+.saybtns .act.alt{background:var(--paper2)}
+
+/* resultado */
+.result{align-items:center;text-align:center}
+.stamp{width:190px;height:190px;border:5px double var(--coral);color:var(--coral);border-radius:50%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;transform:rotate(-11deg);font-family:var(--display);font-size:20px;line-height:1.05;padding:18px;animation:stamp .4s both}
+.stamp small{font-family:var(--mono);font-size:11px}
+@keyframes stamp{from{transform:rotate(-11deg) scale(2.2);opacity:0}to{transform:rotate(-11deg) scale(1)}}
+.stars{font-size:38px;color:var(--amber);letter-spacing:6px;-webkit-text-stroke:1px var(--ink)}
+.grade{font-family:var(--display);font-size:72px;line-height:1}
+.review{width:100%;text-align:left;display:grid;gap:6px}
+.review div{background:var(--badbg);color:var(--badink);padding:8px 12px;border-radius:7px;font-size:15px}
+.mini{display:flex;flex-wrap:wrap;gap:6px}
+.mini span{width:36px;height:36px;border-radius:50%;border:2px dashed var(--line);display:grid;place-items:center;font-family:var(--mono);font-size:11px;color:var(--line)}
+.mini span.on{border:2px solid var(--coral);color:var(--coral);transform:rotate(-8deg)}
+.search{width:100%;background:var(--paper2);border:0;color:var(--ink);padding:12px;font:inherit;border-radius:7px}
+.timer{height:14px;background:var(--paper2);border-radius:7px;overflow:hidden}
+.timer i{display:block;height:100%;background:var(--coral)}
+.toast{position:fixed;left:50%;bottom:calc(84px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--amber);color:var(--night);padding:10px 16px;border-radius:7px;font-size:15px;max-width:min(92vw,520px);z-index:9}
+@media(max-width:520px){.hideS{display:none}.body{padding:16px}.stub{padding:10px 16px}.cards{grid-template-columns:repeat(2,minmax(0,1fr))}.row{grid-template-columns:50px minmax(0,1fr) auto;gap:8px}.nav{padding:0 12px}}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+<div id="app"></div>
+<script>
+const q=(p,a,o,tip)=>({k:"q",p,a,o,tip});
+const ord=(pt,s,x,tip)=>({k:"o",pt,s,x:x||[],tip});
+const spell=(pt,w)=>({k:"o",pt,s:w,letters:true,x:[]});
+const lis=(w,a,o)=>({k:"l",w,a,o});
+const pairs=(...p)=>({k:"m",p});
+const say=(en,pt)=>({k:"s",en,pt});
+const talk=(h,p,note,list)=>({t:"talk",h,p,note,list});
+const rule=(h,f,p,ex,note,table)=>({t:"rule",h,f,p,ex,note,table});
+const words=(h,w,note)=>({t:"words",h,w,note});
+const game=(h,items,note)=>({t:"game",h,items,note});
+
+const LINES=[
+{id:"base",name:"Linha 1 · Do zero",sub:"O mínimo para o inglês começar a fazer sentido"},
+{id:"u9",name:"Linha 2 · Unit 9, Safe Travels",sub:"Viagens e perguntas no passado"},
+{id:"u10",name:"Linha 3 · Unit 10, A World of Adventures",sub:"Acampamento, aventuras e planos para o futuro"}
+];
+
+const PHASES=[
+{id:"p1",line:"base",code:"LQ 101",name:"Quem é quem",sub:"I, you, he, she... my, your",slides:[
+ talk("Inglês tem menos regra do que parece",["Hoje a gente começa do zero. Ninguém vai rir de errar."],"Combine o jogo: cada erro dele dá 1 ponto para você. Ele ganha a fase se fizer mais pontos que você. Leia em voz alta com ele.",["O verbo quase não muda. Em português temos eu vou, tu vais, nós vamos. Em inglês é quase sempre **go**.","A ordem é sempre a mesma: **quem + ação + o resto**.","Inglês se aprende falando alto. Vamos repetir tudo."]),
+ words("Quem faz a ação",[["🙋","I","ái","eu"],["👉","you","iú","você / vocês"],["👦","he","rrí","ele"],["👧","she","chí","ela"],["🐶","it","it","coisa ou animal"],["👨‍👩‍👧","we","uí","nós"],["👥","they","dêi","eles / elas"]],"Toque em cada cartão. Ele tenta adivinhar antes de abrir, depois repete o som. O I é sempre maiúsculo."),
+ rule("De quem é?",[["my","meu/minha","s"],["your","seu/sua","s"],["his","dele","s"],["her","dela","s"],["our","nosso","s"],["their","deles","s"]],"Essas palavras vêm sempre antes da coisa. E não mudam no plural: my friend, my friends.",[["My name is Luquinhas.","Meu nome é Luquinhas."],["Where is your bag?","Onde está a sua bolsa?"],["Her dad is here.","O pai dela está aqui."],["Their dog is happy.","O cachorro deles está feliz."]],"Aponte para objetos da sala: my phone, your shoe, her bag. Faça ele apontar e dizer também."),
+ game("Jogo: quem é quem",[pairs(["I","eu"],["you","você"],["he","ele"],["she","ela"],["we","nós"],["they","eles"]),q("Como se diz ELA em inglês?","she",["he","it","we"],"He é ele. She é ela."),q("Pedro e Ana. Qual palavra substitui os dois?","they",["he","we","it"],"Eles dois = they."),q("The dog (o cachorro). Qual palavra usamos?","it",["I","we","she"],"Coisa ou animal = it."),q("Eu e minha mãe. Qual palavra usamos?","we",["they","you","he"],"Eu + outra pessoa = we (nós)."),q("A família DELES:","their family",["my family","her family","your family"],"Their = deles."),q("O livro DELA:","her book",["his book","my book","our book"],"Her = dela. His = dele."),lis("they","eles / elas",["ele","nós","você"]),say("My name is Luquinhas.","Meu nome é Luquinhas."),say("She is my friend.","Ela é minha amiga.")],"Se ele errar, leia a explicação junto. A questão errada volta no fim da rodada.")
+]},
+{id:"p2",line:"base",code:"LQ 102",name:"O verbo mais importante",sub:"to be: am, is, are",slides:[
+ talk("To be significa ser e estar",["Em inglês, ser e estar são uma palavra só. Ela aparece em quase toda frase."],"Dê um exemplo em português: eu sou alto, eu estou cansado. Em inglês os dois usam am.",["Ela tem três formas no presente: **am**, **is** e **are**.","Saber qual usar depende só de quem faz a ação."]),
+ rule("Qual usar?",[],"Decore esta tabela. Se souber ela, metade da prova fica mais fácil.",[["I am happy.","Eu estou feliz."],["She is my friend.","Ela é minha amiga."],["We are at school.","Nós estamos na escola."]],"Tampe a tabela com a mão e pergunte: he? we? I? they? Ele responde am, is ou are. Repita até sair rápido.",{h:["Quem","to be","Forma curta"],r:[["I","am","I'm"],["he / she / it","is","he's / she's / it's"],["you / we / they","are","you're / we're / they're"]]}),
+ rule("Negar e perguntar",[["Are","to be","h"],["you","quem","s"],["happy?","o resto","c"]],"Para perguntar, o verbo vai para a frente. Para negar, coloque not depois dele.",[["Is he tired?","Ele está cansado?"],["Yes, he is.","Sim, ele está."],["I am not hungry.","Eu não estou com fome."],["They aren't here.","Eles não estão aqui."]],"Lembre: isn't = is not; aren't = are not. Faça 3 perguntas reais para ele: Are you hungry? Are you happy? Is your mom at home?"),
+ game("Jogo: am, is ou are?",[q("I ___ happy.","am",["is","are","be"],"I combina só com am."),q("She ___ my friend.","is",["am","are","be"],"He, she, it usam is."),q("They ___ at school.","are",["am","is","be"],"You, we, they usam are."),q("My dog ___ hungry.","is",["am","are","be"],"My dog = it. Então usa is."),q("My friends ___ here.","are",["is","am","be"],"My friends = they. Então usa are."),q("Pergunta certa:","Are you tired?",["You are tired?","Is you tired?","Am you tired?"],"Na pergunta, o to be vem primeiro."),q("Como negar? He ___ tired.","isn't",["aren't","not","don't"],"Is + not = isn't."),ord("Eu estou feliz.","I am happy.",["is"]),ord("Ele é meu amigo?","Is he my friend?",["are"]),say("I am happy.","Eu estou feliz."),say("Are you tired?","Você está cansado?")])
+]},
+{id:"p3",line:"base",code:"LQ 103",name:"Palavrinhas cola",sub:"a, the, and, in, on, at, what, where",slides:[
+ words("Colam as frases",[["1️⃣","a / an","â / én","um, uma"],["👆","the","dâ","o, a, os, as"],["➕","and","énd","e"],["✋","but","bât","mas"],["❓","because","bicóz","porque"],["➡️","so","sôu","então"],["💪","very","véri","muito"],["🎒","with","uíth","com"],["🚫","not","nót","não"]],"Palavras pequenas aparecem em toda frase e a prova cobra. Abra e repita. An entra antes de som de vogal: an apple, a bus."),
+ rule("Onde? in, on, at, to",[],"Essas quatro aparecem muito nas Units 9 e 10.",[["He is in the tent.","Ele está na barraca."],["I go to school on foot.","Eu vou para a escola a pé."],["She is at the airport.","Ela está no aeroporto."],["We went to Brasília.","Nós fomos para Brasília."]],"Em on foot e on vacation não adianta pensar em português. Grave como pedaço pronto.",{h:["Palavra","Ideia","Exemplo"],r:[["in","dentro","in the forest"],["on","em cima / expressões","on foot, on vacation"],["at","em um ponto / horário","at the airport, at 7 a.m."],["to","para","to Brasília"]]}),
+ words("Palavras de pergunta",[["🟦","what","uót","o que / qual"],["📍","where","uér","onde"],["📅","when","uén","quando"],["🤔","why","uái","por quê"],["🔧","how","ráu","como"],["🧑","who","rrú","quem"]],"Essas 6 são a base da Unit 9. Peça para ele criar um gesto para cada uma. How old = quantos anos; how long = quanto tempo."),
+ game("Jogo: as palavrinhas",[pairs(["what","o que"],["where","onde"],["when","quando"],["why","por quê"],["how","como"],["who","quem"]),q("___ apple (uma maçã)","an",["a","the","at"],"Apple começa com som de vogal: an."),q("___ bus (um ônibus)","a",["an","in","on"],"Bus começa com som de consoante: a."),q("She is ___ the airport.","at",["on","to","with"],"Em um ponto ou local: at the airport."),q("I go to school ___ foot.","on",["in","at","to"],"A pé = on foot."),q("We went ___ Brasília.","to",["on","at","with"],"Direção: to."),q("Qual palavra pergunta ONDE?","where",["when","what","who"],"Where = onde; when = quando."),q("Qual palavra pergunta POR QUÊ?","why",["who","how","what"],"Why = por quê."),lis("because","porque",["mas","com","muito"]),ord("Ela está com a minha família.","She is with my family.",["at"]),say("Where is the bus?","Onde está o ônibus?")])
+]},
+{id:"p4",line:"base",code:"LQ 104",name:"Verbos de sobrevivência",sub:"go, take, buy, like... e a ordem da frase",slides:[
+ words("Verbos que mais caem",[["🚶","go","gôu","ir"],["🚌","take","têik","pegar (transporte), levar"],["🤲","get","guét","pegar, conseguir"],["🛒","buy","bái","comprar"],["🏨","stay","stêi","ficar, hospedar-se"],["🧳","carry","kéri","carregar"],["🍕","eat","ít","comer"],["🫴","have","rrév","ter"],["👀","see","sí","ver"],["😴","sleep","slíp","dormir"],["🥾","walk","uók","caminhar"],["📚","learn","lârn","aprender"]],"Faça mímica: você imita e ele diz o verbo. Depois troque."),
+ words("Querer, gostar, precisar",[["🙏","want","uónt","querer"],["❤️","like","láik","gostar"],["🎒","need","níd","precisar"],["🏛️","visit","vízit","visitar"],["🎾","play","plêi","jogar, brincar"],["🎬","watch","uótch","assistir"]],"Treine com I like... I want... I need... usando coisas de que ele gosta de verdade."),
+ rule("A fórmula da frase",[["I","quem","s"],["take","ação","v"],["a bus","o resto","c"]],"No presente, o verbo só ganha um s com he, she e it.",[["I like pizza.","Eu gosto de pizza."],["He likes pizza.","Ele gosta de pizza."],["We go to school on foot.","Nós vamos para a escola a pé."],["They buy a ticket.","Eles compram uma passagem."]],"Mostre a diferença entre I like e He likes. Peça uma frase verdadeira sobre ele e outra sobre um amigo."),
+ rule("Do e don't: os ajudantes",[["Do","ajudante","h"],["you","quem","s"],["like","ação","v"],["pizza?","o resto","c"]],"Esta é a ideia mais importante antes do passado: a pergunta precisa de um ajudante, e o verbo fica puro.",[["Do you like dogs?","Você gosta de cachorros?"],["Yes, I do.","Sim, gosto."],["I don't like fish.","Eu não gosto de peixe."],["Does she eat meat?","Ela come carne?"]],"Em português só mudamos a entonação. Em inglês precisa do Do. Com he, she, it o ajudante é Does. Na Unit 9 ele será trocado por Did."),
+ game("Jogo: monta frase",[pairs(["go","ir"],["buy","comprar"],["stay","ficar"],["carry","carregar"],["eat","comer"],["see","ver"]),ord("Eu pego um ônibus.","I take a bus."),ord("Nós compramos uma passagem.","We buy a ticket.",["buys"]),ord("Ela gosta de pizza.","She likes pizza.",["like"]),ord("Você gosta de cachorros?","Do you like dogs?",["Does"]),q("He ___ pizza.","likes",["like","liking","to like"],"He, she, it: verbo com s."),q("___ you like fish?","Do",["Are","Does","Is"],"Você: Do you..."),q("I ___ like fish.","don't",["doesn't","isn't","am not"],"I + don't + verbo."),lis("carry","carregar",["comprar","dormir","ver"]),say("I like pizza.","Eu gosto de pizza."),say("Do you like dogs?","Você gosta de cachorros?")])
+]},
+{id:"p5",line:"base",code:"LQ 105",name:"Máquina do tempo",sub:"ontem, amanhã e os verbos no passado",slides:[
+ words("Palavras que dizem o tempo",[["⬅️","yesterday","iésterdei","ontem"],["⏪","last week","lést uík","semana passada"],["⏮️","last year","lést iâr","ano passado"],["⌛","ago","agôu","atrás"],["📍","today","tudêi","hoje"],["▶️","now","náu","agora"],["➡️","tomorrow","tumórou","amanhã"],["⏩","next week","nékst uík","semana que vem"],["☀️","this summer","dís sâmer","neste verão"]],"Estas palavras avisam o tempo da frase. Viu yesterday ou last, é passado. Viu tomorrow ou next, é futuro."),
+ rule("Passado regular: coloque -ed",[["walk","verbo","v"],["+ ed","passado","h"],["walked","pronto","c"]],"No passado, a forma é igual para todo mundo: I walked, she walked, they walked.",[["I stayed at a hotel.","Eu fiquei em um hotel."],["She walked in the forest.","Ela caminhou na floresta."],["We visited a museum.","Nós visitamos um museu."],["They learned English.","Eles aprenderam inglês."]],"Mostre que muda menos que em português: eu fiquei, nós ficamos, eles ficaram. Em inglês é tudo stayed."),
+ rule("Os irregulares: têm que decorar",[],"Esses mudam de forma. São poucos e os mais cobrados da Unit 9.",[["We went to Jordan.","Nós fomos para a Jordânia."],["I took a plane.","Eu peguei um avião."],["He ate the cake.","Ele comeu o bolo."]],"Faça em duplas: você fala go, ele responde went. Depois invertam. Essa parte precisa ser repetida em todas as aulas.",{h:["Presente","Passado","Português"],r:[["go","went","foi"],["take","took","pegou"],["get","got","pegou/conseguiu"],["buy","bought","comprou"],["eat","ate","comeu"],["have","had","teve"],["see","saw","viu"],["do","did","fez"],["sleep","slept","dormiu"],["am / is","was","era/estava"],["are","were","eram/estavam"]]}),
+ rule("Negar no passado: didn't",[["I","quem","s"],["didn't","ajudante","h"],["go","verbo puro","v"]],"Com didn't, o verbo volta para a forma pura. O passado já está no didn't.",[["I didn't go to school.","Eu não fui à escola."],["She didn't eat the cake.","Ela não comeu o bolo."],["We weren't tired.","Nós não estávamos cansados."]],"Erro número 1: I didn't went. Faça ele dizer por que está errado."),
+ game("Jogo: pega o passado",[pairs(["go","went"],["take","took"],["buy","bought"],["eat","ate"],["see","saw"],["have","had"]),q("Yesterday I ___ to the market.","went",["go","goes","going"],"Yesterday = passado. Go vira went."),q("She ___ at a hotel last week.","stayed",["stay","stays","staying"],"Verbo regular: -ed."),q("We ___ a plane last year.","took",["take","taked","takes"],"Take é irregular: took."),q("I ___ happy yesterday.","was",["were","am","is"],"I + passado de to be = was."),q("They ___ tired yesterday.","were",["was","are","is"],"They + passado de to be = were."),q("Tempo certo: next week é...","futuro",["passado","presente","ontem"],"Next = próximo. É futuro."),q("Frase correta:","I didn't go.",["I didn't went.","I don't went.","I not went."],"Depois de didn't, verbo puro."),ord("Nós comemos o bolo ontem.","We ate the cake yesterday.",["eat"]),ord("Eu não comprei uma passagem.","I didn't buy a ticket.",["bought"]),lis("yesterday","ontem",["amanhã","hoje","agora"]),say("I went to school yesterday.","Eu fui à escola ontem.")])
+]},
+{id:"p6",line:"u9",code:"U9 201",name:"Transportes e viagem",sub:"airport, train, ticket, luggage",slides:[
+ words("Na viagem",[["🛫","airport","érport","aeroporto"],["🚆","train","trêin","trem"],["🚌","bus","bâs","ônibus"],["✈️","plane","plêin","avião"],["🛳️","boat","bôut","barco"],["🎟️","ticket","tíkit","passagem, bilhete"],["🏨","hotel","rrotél","hotel"],["👣","foot","fut","pé"],["🧳","luggage","lâguidj","bagagem"],["🗺️","tour","túr","passeio guiado"]],"Abra todas, repita. O livro chama coach no inglês britânico o que nos EUA é bus."),
+ rule("Qual verbo vai com qual palavra?",[],"Em inglês as palavras andam em dupla. Aprenda a dupla inteira.",[["Maria went to the airport.","Maria foi ao aeroporto."],["She took a plane to Brasília.","Ela pegou um avião para Brasília."],["We always go on foot.","Nós sempre vamos a pé."],["Mark took a boat to Ireland.","Mark pegou um barco para a Irlanda."]],"Abra o livro na Unit 9, Vocabulary, exercício 2, depois deste jogo. Ele deve conseguir completar sozinho.",{h:["Verbo","Palavra","Significa"],r:[["go","to the airport","ir ao aeroporto"],["get / take","a train, a bus, a plane, a boat","pegar transporte"],["buy","a ticket","comprar passagem"],["stay at","a hotel","ficar em hotel"],["go","on foot","ir a pé"],["carry","luggage","carregar bagagem"],["get / take","a tour","fazer um passeio"]]}),
+ game("Jogo: arrume a viagem",[pairs(["train","trem"],["plane","avião"],["boat","barco"],["ticket","passagem"],["luggage","bagagem"],["airport","aeroporto"]),q("We live near our school, so we always go on ___.","foot",["plane","boat","train"],"Morar perto = ir a pé: on foot."),q("You can buy a ___ online.","ticket",["hotel","foot","luggage"],"Compra-se passagem: ticket."),q("For their vacation, they often ___ at the Milton Hotel.","stay",["carry","take","buy"],"Hospedar-se = stay at."),q("Mark took a ___ to Ireland across the sea.","boat",["bus","train","foot"],"Atravessar o mar: boat."),q("When you visit Peru, you should take a ___ of Machu Picchu.","tour",["foot","luggage","ticket"],"Passeio guiado = tour."),q("She ___ her luggage. (carregar)","carries",["buys","stays","goes"],"Carry = carregar. Com she: carries."),ord("Eu vou ao aeroporto.","I go to the airport.",["on"]),ord("Nós ficamos em um hotel.","We stayed at a hotel.",["on"]),lis("luggage","bagagem",["passagem","aeroporto","barco"]),say("I came to school on foot today.","Eu vim para a escola a pé hoje."),say("On vacation, my family takes a train.","Nas férias, minha família pega um trem.")])
+]},
+{id:"p7",line:"u9",code:"U9 202",name:"Did you...?",sub:"Perguntas de sim ou não no passado",slides:[
+ rule("Did: o ajudante do passado",[["Did","ajudante","h"],["you","quem","s"],["take","verbo puro","v"],["a bus?","o resto","c"]],"Do virou Did. E agora o verbo não muda mais: o Did já mostra que é passado.",[["Did you take a lot of bags?","Você levou muitas malas?"],["No, I didn't.","Não, não levei."],["Did he go with his family?","Ele foi com a família?"],["Yes, he did.","Sim, foi."]],"Esse é o conteúdo central da Unit 9. Reforce: Did + quem + verbo puro."),
+ rule("Com to be não existe Did",[["Were","to be","h"],["you","quem","s"],["worried?","o resto","c"]],"Se a frase usa was ou were, o próprio to be vai para a frente.",[["Were you worried about the weather?","Você estava preocupado com o clima?"],["Yes, I was.","Sim, estava."],["Was it hot?","Estava quente?"],["No, it wasn't.","Não, não estava."]],"Faça ele separar: tem ação (ir, comer, comprar)? Usa Did. É ser ou estar? Usa Was ou Were.",null),
+ rule("O erro que o livro avisa",[],"Confira sempre o verbo depois do Did.",[["Did you stay in hotels?","Você ficou em hotéis? (certo)"],["Did you see the camels?","Você viu os camelos? (certo)"]],"Mostre o erro na tela: Do you stayed está errado, Did you stayed também. O certo é Did you stay.",{h:["Errado","Certo"],r:[["Do you stayed in hotels?","Did you stay in hotels?"],["Did you went?","Did you go?"],["Did you were happy?","Were you happy?"]]}),
+ game("Jogo: Did ou Were?",[q("___ you take a plane?","Did",["Were","Do","Was"],"Take é ação. Passado: Did."),q("___ you worried?","Were",["Did","Do","Was"],"Worried não é ação. You + passado de to be: Were."),q("___ he tired?","Was",["Were","Did","Do"],"He + passado de to be: Was."),q("Did you ___ new friends?","make",["made","makes","making"],"Depois de Did, verbo puro."),q("Pergunta certa:","Did they go hiking?",["Did they went hiking?","Do they went hiking?","Were they go hiking?"],"Did + they + go."),q("Did you see the camels? Yes, I ___.","did",["do","saw","was"],"Resposta curta repete o ajudante."),q("Were you ready? No, I ___.","wasn't",["didn't","weren't","don't"],"Para I, o passado de to be é was: wasn't."),ord("O cachorro dormiu na barraca?","Did the dog sleep in the tent?",["slept"],"Depois de Did, verbo puro: sleep."),ord("Eles estavam com frio à noite?","Were they cold at night?",["Did"]),ord("Eles foram fazer trilha?","Did they go hiking?",["went"]),ord("Ele viajou sozinho?","Did he travel alone?"),ord("Ele esperou muito tempo?","Did he wait a long time?",["waited"]),say("Did you go with other people?","Você foi com outras pessoas?"),say("Yes, I did. No, I didn't.","Sim, fui. Não, não fui.")],"As frases de montar vêm do livro: Language Toolkit, exercício 3. Depois, peça para ele fazer o exercício 4 sem ajuda.")
+]},
+{id:"p8",line:"u9",code:"U9 203",name:"Como você se sente?",sub:"afraid, angry, bored, excited...",slides:[
+ words("Sentimentos",[["😱","afraid","afrêid","com medo"],["😡","angry","éngri","com raiva"],["😑","bored","bórd","entediado"],["🤩","excited","eksáitid","animado"],["😟","worried","uârid","preocupado"],["😀","happy","réppi","feliz"],["🍽️","hungry","rângri","com fome"],["🥱","tired","táierd","cansado"]],"Mímica: você faz a cara e ele diz a palavra. Essas 8 aparecem na prova. Cuidado: hungry (fome) é diferente de angry (raiva)."),
+ rule("Sentimento precisa de to be",[["She","quem","s"],["was","to be","h"],["afraid.","sentimento","c"]],"Junte o que já aprendeu. Atenção: em inglês não se tem fome, se está com fome.",[["I am tired.","Eu estou cansado."],["The team is excited.","O time está animado."],["George was hungry.","George estava com fome."],["Were you bored?","Você estava entediado?"]],"Pergunte como ele se sente em cada situação: na prova de Matemática, jogando bola, sem Wi-Fi."),
+ game("Jogo: cara e palavra",[pairs(["afraid","com medo"],["angry","com raiva"],["bored","entediado"],["excited","animado"],["worried","preocupado"],["tired","cansado"],["hungry","com fome"],["happy","feliz"]),q("The team won the game! They are ___.","excited",["bored","worried","hungry"],"Ganhou: animados."),q("He didn't eat breakfast. He is ___.","hungry",["angry","afraid","bored"],"Sem café da manhã: com fome."),q("The baby wants to sleep. She is ___.","tired",["excited","hungry","angry"],"Quer dormir: cansada."),q("She forgot to do her homework. She is ___.","worried",["happy","bored","excited"],"Esqueceu a tarefa: preocupada."),q("The little cat doesn't like the big dog. It is ___.","afraid",["hungry","tired","bored"],"Gato pequeno, cachorro grande: com medo."),q("Her sister used her phone without asking. Maddy is ___.","angry",["happy","tired","hungry"],"Mexeram no celular dela: com raiva."),spell("entediado","bored"),spell("cansado","tired"),lis("hungry","com fome",["com raiva","com medo","cansado"]),say("I feel afraid when I talk in front of the class.","Fico com medo quando falo na frente da turma."),say("I was very happy.","Eu estava muito feliz.")])
+]},
+{id:"p9",line:"u9",code:"U9 204",name:"What, where, when...",sub:"Perguntas completas no passado",slides:[
+ rule("Coloque a palavra de pergunta na frente",[["Where","pergunta","q"],["did","ajudante","h"],["you","quem","s"],["go?","verbo puro","v"]],"É a mesma pergunta com Did, só que começa com what, where, when, why ou how.",[["What did you learn on the trip?","O que você aprendeu na viagem?"],["When did Michelle tell you?","Quando a Michelle te contou?"],["Why did he cancel?","Por que ele cancelou?"],["How did you travel?","Como você viajou?"]],"Pegue uma pergunta de sim ou não e cole a palavra na frente: Did you go? Where did you go?"),
+ rule("Com to be",[["Where","pergunta","q"],["was","to be","h"],["your first home?","quem","s"]],"Com ser ou estar, vai o was ou were logo depois da palavra de pergunta.",[["Where was your first home?","Onde foi sua primeira casa?"],["What was your favorite TV show?","Qual era seu programa favorito?"],["How old is your brother?","Quantos anos tem seu irmão?"]],"Pergunte de verdade. Where was your first home? Ele responde: It was in Recife. Troque o lugar para o que for real."),
+ game("Jogo: pergunta completa",[q("___ did you go? In Jordan.","Where",["When","Who","Why"],"Resposta é lugar: where."),q("___ did you travel? By plane.","How",["What","Who","When"],"Resposta é o modo: how."),q("___ did she tell you? Yesterday.","When",["Where","What","Who"],"Resposta é tempo: when."),q("___ did he cancel? He had to go to work.","Why",["Who","Where","How"],"Resposta é motivo: why."),q("What food ___ they eat?","did",["were","was","do"],"Eat é ação: did."),q("Where ___ they?","were",["did","was","do"],"Sem verbo de ação, usa to be: were."),q("Who did they ___?","invite",["invited","invites","inviting"],"Depois de did, verbo puro."),q("Frase correta:","Where did you stay?",["Where you stayed?","Where did you stayed?","Where stayed you?"],"Erro avisado no livro."),ord("Onde foi sua primeira casa?","Where was your first home?"),ord("Quando você aprendeu a andar de bicicleta?","When did you learn to ride a bicycle?",["learned"]),ord("Como você se sentiu?","How did you feel?",["felt"]),ord("Que filme você viu na semana passada?","What movie did you see last week?",["saw"]),ord("Como você veio para a escola hoje?","How did you travel to school today?",["traveled"]),say("Where did you go?","Aonde você foi?"),say("What did you do?","O que você fez?")],"Depois, no livro: Language Toolkit wh- questions, exercícios 3 e 4.")
+]},
+{id:"p10",line:"u9",code:"U9 205",name:"Conte uma história",sub:"Anecdote e short story",slides:[
+ talk("O que é uma anecdote?",["Anecdote é uma história curta, verdadeira e engraçada. O livro cobra as frases para contar e reagir."],"Conte uma história engraçada real sua em português. Depois vá soltando as frases em inglês na próxima tela."),
+ rule("Frases para contar e reagir",[],"Essas frases estão no quadro Useful language do livro.",[["Guess what happened?","Adivinha o que aconteceu?"],["Really?","Sério?"],["Oh, no!","Ah, não!"],["Wow.","Uau."],["What did you do?","O que você fez?"],["So then...","E então..."],["That sounds terrible!","Que horror!"],["And then I...","E aí eu..."]],"Role-play. Você conta, ele reage com as frases. Depois troca."),
+ rule("Colocar a história em ordem",[["At first","no começo","c"],["Then","depois","c"],["Next","em seguida","c"],["After that","depois disso","c"],["Finally","por fim","c"]],"Na redação: título, 3 ou 4 partes, essas palavras e adjetivos para dizer como as pessoas se sentiram.",[["At first, he wasn't very happy.","No começo, ele não estava muito feliz."],["Then he started to walk home.","Depois ele começou a voltar para casa."],["After that, he saw a big horse.","Depois disso, ele viu um cavalo grande."],["Finally, the man thanked Rafael.","Por fim, o homem agradeceu ao Rafael."]],"A história é a do Rafael e o cavalo, da seção Writing. Peça para ele contar em português usando as palavras em inglês para ligar as partes."),
+ game("Jogo: história na ordem",[q("Anecdote é:","uma história curta, verdadeira e engraçada",["um segredo","um pedido de desculpa","uma lista de compras"],"Esse é o exercício 2 do Speaking."),q("Primeira palavra da história:","At first",["Finally","After that","Next"],"At first = no começo."),q("Última palavra da história:","Finally",["At first","Then","Next"],"Finally = por fim."),q("A: I ate the cake! B: You ate your friend's cake? ___ terrible!","That sounds",["Guess what","What did you","So then"],"Reação: That sounds terrible."),q("A: Guess what happened? B: ___","What happened?",["Thank you.","I'm so sorry.","See you."],"A resposta natural é What happened?"),q("A: She wasn't home! B: ___ What did you do?","Oh, no!",["Good idea!","Wow, great!","Thanks!"],"Notícia ruim: Oh, no!"),q("Rafael felt bored because...","he didn't have friends to hang out with",["he was very hungry","he had a new horse","he was in the mountains"],"Os amigos estavam viajando."),q("Rafael was ___ the horse.","afraid of",["angry at","happy with","bored of"],"No começo, ele teve medo."),ord("Adivinha o que aconteceu?","Guess what happened?"),ord("Por fim, ele ficou feliz.","Finally, he was happy.",["Next"]),say("Guess what happened?","Adivinha o que aconteceu?"),say("My dog ate my homework!","Meu cachorro comeu minha tarefa!")])
+]},
+{id:"p11",line:"u9",code:"U9 206",name:"Marina e a Apollo",sub:"Leitura e História da Unit 9",slides:[
+ talk("A viagem da Marina",["Marina Flores, 13 anos, viajou com a família para a Jordânia, no Oriente Médio."],"Leia a entrevista do livro, seção Reading. Ele não precisa entender cada palavra: procure nomes, datas e palavras conhecidas.",["Foi de avião para Amã, de ônibus até uma cidade pequena, depois **a pé**.","Andou **10 dias** com um grupo de tour, 12 km por dia.","Não carregou bagagem. O grupo montava os acampamentos.","Foi fácil, mas muito quente. Sempre sentia fome.","O melhor da viagem: **ver os camelos**."]),
+ rule("Viagens famosas",[],"Parte de História da Unit 9, com datas.",[["Apollo 11 landed on the moon.","A Apollo 11 pousou na Lua."],["Apollo 13 tried to go to the moon.","A Apollo 13 tentou ir à Lua."],["The astronauts landed safely in the Pacific Ocean.","Os astronautas pousaram em segurança no Oceano Pacífico."]],"Na página HISTORY, faça o exercício 1 e depois leia a entrevista da página seguinte. A foto que recebi cortou esse texto, então as respostas do exercício 4 precisam vir do livro.",{h:["Ano","O que aconteceu"],r:[["1914","Shackleton e sua equipe tentaram atravessar a Antártida"],["1953","Edmund Hillary e equipe chegaram ao topo do Everest"],["1969","Apollo 11 pousou na Lua e voltou"],["1970","Apollo 13 tentou ir à Lua"]]}),
+ rule("A ordem da Apollo 13",[["Treino","1","c"],["Começa em 11/04/1970","2","h"],["Problema","3","v"],["Conserto","4","s"],["Pouso no Pacífico","5","c"]],"Primeiro treinaram, a viagem começou, houve um problema, consertaram a nave e pousaram no oceano.",[["The astronauts trained for over 1,000 hours.","Os astronautas treinaram mais de 1.000 horas."],["There was a problem with the spacecraft.","Houve um problema com a nave."],["The astronauts repaired the spacecraft.","Os astronautas consertaram a nave."]],"Faça ele repetir os cinco passos sem olhar."),
+ game("Jogo: leitura rápida",[q("Where did Marina go?","Jordan",["Peru","Italy","Bahia"],"Ela foi para a Jordânia."),q("Marina walked ___.","with her family",["alone","with her dog","with her school"],"Ela viajou com a família."),q("Did she carry her luggage?","No, she didn't.",["Yes, she did.","Yes, she was.","No, she wasn't."],"Eles fizeram um tour, então não carregaram."),q("The best thing about the trip was...","seeing camels",["the food","the plane","the hotel"],"Na entrevista: seeing camels."),q("It was ___ to walk in the desert.","easy",["difficult","cold","boring"],"It was an easy hike, but the sun was very hot."),q("Mount Everest: ano","1953",["1914","1969","1970"],"Edmund Hillary, 1953."),q("Apollo 11: ano","1969",["1953","1914","1970"],"Apollo 11 chegou à Lua em 1969."),q("Shackleton: ano","1914",["1953","1969","1970"],"Shackleton, Antártida, 1914."),q("Depois do problema, os astronautas...","repaired the spacecraft",["bought a ticket","took a bus","landed on the moon"],"Apollo 13 consertou a nave e voltou."),q("Where did Apollo 13 land?","in the Pacific Ocean",["on the moon","at the airport","in the desert"],"Apollo 13 pousou no Oceano Pacífico."),say("We went on foot.","Nós fomos a pé.")])
+]},
+{id:"p12",line:"u10",code:"U10 301",name:"Fazendo a mala",sub:"tent, sunscreen, flashlight...",slides:[
+ words("Na mochila",[["⛺","tent","tént","barraca"],["🧊","cooler","kúler","caixa térmica"],["🩹","first-aid kit","fârst-êid kit","kit de primeiros socorros"],["🦟","insect repellent","ínsect ripélent","repelente"],["🧴","sunscreen","sânscrin","protetor solar"],["🔦","flashlight","fléchlait","lanterna"],["🧳","suitcase","sútkeis","mala"],["👙","swimsuit","suímsut","maiô"],["🩳","swim trunks","suím trânks","calção de banho"],["🕶️","sunglasses","sânglésis","óculos de sol"]],"Abra e repita. Muitas palavras são juntadas: sun + screen, sun + glasses, flash + light. Isso ajuda a lembrar."),
+ rule("Você precisa de quê?",[["You","quem","s"],["need","precisa","v"],["sunscreen.","coisa","c"]],"Use need e should para dizer o que levar.",[["You need a first-aid kit for a bike ride.","Você precisa de um kit de primeiros socorros para andar de bicicleta."],["Most people sleep in a tent.","A maioria das pessoas dorme em barraca."],["A flashlight can help you see in the dark.","Uma lanterna ajuda a ver no escuro."],["You should put on sunscreen.","Você deveria passar protetor solar."]],"Monte a mala: bike ride, beach barbecue, picnic in the park. Ele diz You need... para cada um."),
+ game("Jogo: bota na mala",[pairs(["tent","barraca"],["cooler","caixa térmica"],["suitcase","mala"],["flashlight","lanterna"],["sunscreen","protetor solar"],["sunglasses","óculos de sol"]),spell("óculos de sol","sunglasses"),spell("barraca","tent"),spell("maiô","swimsuit"),spell("repelente (a segunda palavra)","repellent"),q("It's sunny, so he's wearing a T-shirt and ___.","sunglasses",["a tent","a flashlight","a cooler"],"Sol: óculos de sol."),q("When people travel, they carry their things in a ___.","suitcase",["tent","cooler","swimsuit"],"Mala = suitcase."),q("A ___ can help you see in the dark.","flashlight",["sunscreen","suitcase","swimsuit"],"Lanterna."),q("You can put food and drinks in a ___ to keep them cool.","cooler",["flashlight","tent","first-aid kit"],"Caixa térmica."),q("A ___ is useful for small accidents on vacation.","first-aid kit",["cooler","swimsuit","tent"],"Kit de primeiros socorros."),q("Daniel is wearing his ___. He's ready to jump in the lake!","swim trunks",["sunglasses","sunscreen","suitcase"],"Pular no lago: calção."),lis("sunscreen","protetor solar",["lanterna","barraca","mala"]),say("You need insect repellent.","Você precisa de repelente.")])
+]},
+{id:"p13",line:"u10",code:"U10 302",name:"Planos marcados",sub:"Present continuous para o futuro",slides:[
+ rule("Como fazer o -ing",[["am / is / are","to be","h"],["+","","c"],["verbo + ing","ação","v"]],"Essa forma significa estou fazendo. Exemplo: I am playing = estou jogando.",[["I am reading.","Estou lendo."],["She is swimming.","Ela está nadando."],["They are visiting a museum.","Eles estão visitando um museu."]],"Regras de escrita: make → making (some o e), swim → swimming (dobra a última letra)."),
+ rule("A mesma forma pode ser futuro",[["Next week","tempo futuro","q"],["I'm visiting","to be + ing","h"],["my friend.","o resto","c"]],"Se tiver um plano marcado e uma palavra de futuro, o present continuous quer dizer futuro.",[["My favorite band is coming here this summer.","Minha banda favorita vem aqui neste verão."],["They're visiting in June.","Eles vêm em junho."],["We're traveling tomorrow.","Nós vamos viajar amanhã."],["Next week I'm visiting my friend.","Semana que vem vou visitar meu amigo."]],"Mostre que o português faz igual: amanhã estou indo. Erro do livro: Next week I visit my friend."),
+ rule("A agenda do Jack",[],"Como o livro cobra: transformar a agenda em frase.",[["Jack is meeting his cousins at the airport on Saturday at 10:15 a.m.","Jack vai encontrar os primos no aeroporto no sábado às 10h15."],["He is having lunch in town with the family.","Ele vai almoçar na cidade com a família."],["He is taking Layla to soccer practice.","Ele vai levar a Layla ao treino de futebol."]],"No livro: Language Toolkit, exercício 4. Ele escreve as demais usando esse modelo. On + dia; at + hora.",{h:["Quando","Plano"],r:[["Sat 10:15 a.m.","Meet cousins at the airport"],["Sat 1:00 p.m.","Lunch in town with the family"],["Sat 4:00 p.m.","Take Layla to soccer practice"],["Sun 10:00 a.m.","Breakfast with cousins at Eggs and Go"],["Sun 12:00 p.m.","Layla's soccer game"],["Sun 5:00 p.m.","Party at home"]]}),
+ game("Jogo: agenda cheia",[q("Next week I ___ my friend.","'m visiting",["visit","visited","visits"],"Plano marcado: to be + -ing."),q("My favorite band ___ here this summer.","is coming",["came","come","coming"],"Band = it: is coming."),q("They ___ in June.","are visiting",["is visiting","visited","visits"],"They + are + -ing."),q("Qual fala do FUTURO?","We are traveling tomorrow.",["We are traveling now.","We traveled yesterday.","We travel every year."],"Tomorrow indica futuro."),q("Qual palavra é de futuro?","next week",["yesterday","one week ago","last year"],"Next week = semana que vem."),q("Jack ___ a party at home on Sunday.","is having",["are having","has had","have"],"Jack = he: is having."),q("On Saturday ___ 4:00 p.m.","at",["in","on","to"],"Horário: at."),ord("Jack vai encontrar os primos no sábado.","Jack is meeting his cousins on Saturday.",["meet"]),ord("Semana que vem eu vou visitar meu amigo.","Next week I'm visiting my friend.",["visit"]),ord("Eles vão assistir a um jogo neste sábado.","They are watching a game this Saturday.",["is"]),say("This Saturday, my family is watching a game at the stadium.","Neste sábado, minha família vai ver um jogo no estádio."),say("What are you doing tomorrow?","O que você vai fazer amanhã?")])
+]},
+{id:"p14",line:"u10",code:"U10 303",name:"Aventuras com go",sub:"go fishing, go skiing, go diving...",slides:[
+ words("Aventuras",[["🪂","hang gliding","réng gláidin","asa-delta"],["🎣","fishing","fíchin","pescar"],["⛷️","skiing","skíin","esquiar"],["🤿","diving","dáivin","mergulhar"],["🐎","horseback riding","rórsbék ráidin","cavalgar"],["🏙️","sightseeing","sáitsíin","passear para conhecer"],["🛶","whitewater rafting","uáit-uóter ráftin","rafting"],["🧗","rock climbing","rók cláimin","escalada"]],"Mímica de novo. No inglês britânico, horseback riding é horse riding."),
+ rule("Atividade com go",[["We","quem","s"],["went","passado de go","h"],["fishing.","atividade","c"]],"Basta go + atividade com -ing. Não use to: go fishing, nunca go to fishing.",[["My dad and I went fishing.","Eu e meu pai fomos pescar."],["There was a lot of snow, so she went skiing.","Tinha muita neve, então ela foi esquiar."],["He went diving and swam with the fish.","Ele foi mergulhar e nadou com os peixes."],["We went sightseeing on a bus.","Nós fomos passear de ônibus."]],"Pergunte qual aventura ele faria e qual não faria de jeito nenhum. I want to go... I don't want to go..."),
+ game("Jogo: qual aventura?",[pairs(["fishing","pescar"],["skiing","esquiar"],["diving","mergulhar"],["hang gliding","asa-delta"],["rock climbing","escalada"],["sightseeing","conhecer lugares"]),q("We had fish for dinner. My dad and I went ___.","fishing",["skiing","diving","hang gliding"],"Pegaram o peixe."),q("I was so close to the sky. I went ___.","hang gliding",["fishing","diving","sightseeing"],"Perto do céu: asa-delta."),q("At the end all their clothes were wet. They went ___.","whitewater rafting",["hang gliding","sightseeing","rock climbing"],"Roupa molhada: rafting."),q("There was a lot of snow on the mountain. She went ___.","skiing",["diving","fishing","rafting"],"Neve: esqui."),q("He swam with the fish. He went ___.","diving",["fishing","skiing","hang gliding"],"Nadou com peixes: mergulho."),q("We saw the old city from the top of the bus. We went ___.","sightseeing",["diving","skiing","rock climbing"],"Conhecer a cidade: sightseeing."),q("Frase correta:","I went fishing.",["I went to fishing.","I go to fishing.","I went fish."],"Go + -ing, sem to."),ord("Ela foi cavalgar.","She went horseback riding.",["to"]),lis("rock climbing","escalada",["pescar","esquiar","asa-delta"]),say("I prefer fishing.","Eu prefiro pescar."),say("I love horseback riding.","Eu adoro cavalgar.")])
+]},
+{id:"p15",line:"u10",code:"U10 304",name:"Vou fazer!",sub:"be going to",slides:[
+ rule("Going to = vou fazer",[["I","quem","s"],["am","to be","h"],["going to","vou","c"],["study","verbo puro","v"]],"Para intenções. Diz o que você pretende fazer. Depois de going to, o verbo fica puro.",[["I'm going to study for 20 minutes every day.","Vou estudar 20 minutos todo dia."],["We're going to learn English.","Nós vamos aprender inglês."],["She is going to take a camera.","Ela vai levar uma câmera."],["They aren't going to sleep in a tent.","Eles não vão dormir em barraca."]],"É o último grande conteúdo. Peça 3 frases verdadeiras: o que ele vai fazer no fim de semana."),
+ rule("Perguntas",[["Are","to be","h"],["you","quem","s"],["going to","vou","c"],["sleep?","verbo puro","v"]],"O to be passa para a frente, como sempre. Com palavra de pergunta, ela vem antes.",[["Are you going to use your phone?","Você vai usar seu celular?"],["Yes, I am.","Sim, vou."],["What are you going to do?","O que você vai fazer?"],["How are you going to do that?","Como você vai fazer isso?"]],"No livro: Language Toolkit be going to, exercício 3. Faça a conversa completa junto."),
+ rule("Comparando os três tempos",[],"Veja as palavras de tempo primeiro. Elas dizem qual escolher.",[["I went camping last year.","Fui acampar ano passado."],["I'm going camping next week.","Vou acampar semana que vem (marcado)."],["I'm going to learn to skateboard.","Vou aprender a andar de skate (intenção)."]],"Esta tela resume as duas Units. Use na véspera da prova.",{h:["Quando","Forma","Exemplo"],r:[["Passado","verbo-ed ou irregular","I stayed / I went"],["Passado, pergunta","Did + quem + verbo puro","Did you go?"],["Futuro marcado","am/is/are + -ing","I'm visiting"],["Intenção","am/is/are + going to + verbo puro","I'm going to visit"]]}),
+ game("Jogo: vou fazer!",[q("What ___ you going to do?","are",["is","do","did"],"You: are."),q("My family and I ___ going to go camping.","are",["is","am","do"],"My family and I = we: are."),q("My mom ___ going to take a camera.","is",["are","am","do"],"My mom = she: is."),q("I'm going to ___ to skateboard.","learn",["learned","learning","learns"],"Depois de going to, verbo puro."),q("Pergunta certa:","Are you going to use your phone?",["You are going to use your phone?","Do you going to use your phone?","Are you going to used your phone?"],"Are + you + going to + verbo puro."),q("We use be going to to talk about...","the future",["the past","yesterday","last week"],"Going to fala do futuro."),q("Tempo certo: Last year I ___ to Bahia.","went",["am going","go","going"],"Last year pede passado."),q("Tempo certo: Next year I ___ learn English.","am going to",["went to","did","was"],"Next year pede futuro."),ord("Eu vou comprar um skate.","I'm going to buy a skateboard.",["bought"]),ord("O que você vai fazer?","What are you going to do?",["did"]),ord("Ela vai aprender a nadar.","She is going to learn to swim.",["are"]),say("I'm going to practice every day.","Vou treinar todos os dias."),say("What are you going to do next year?","O que você vai fazer no próximo ano?")])
+]},
+{id:"p16",line:"u10",code:"U10 305",name:"Convite por e-mail",sub:"Speaking e Writing da Unit 10",slides:[
+ rule("Reagir a planos",[],"Quando alguém conta um plano legal, responda com uma destas.",[["Are you excited?","Você está animado?"],["I'm really excited.","Estou muito animado."],["That's awesome!","Que incrível!"],["That sounds amazing!","Parece incrível!"],["Oh, wow!","Nossa!"],["I'm so happy for you!","Fico muito feliz por você!"]],"O livro manda riscar as frases que não servem: I'm so sorry!, Are you OK? e Can you help me? não são para plano legal."),
+ rule("Escrever o convite",[],"Molde para a redação: saudação, onde, quando, atividades, o que levar e despedida.",[["I'd like to invite you to come with us.","Eu gostaria de te convidar para vir com a gente."],["Would you like to come?","Você gostaria de vir?"],["Please let me know if you can come.","Por favor, me avise se puder vir."],["Thank you for your invitation.","Obrigado pelo convite."],["I'd love to come.","Eu adoraria ir."],["Sorry, I can't come this time.","Desculpa, não posso ir desta vez."],["That sounds really good, but...","Parece muito bom, mas..."]],"Sigam a seção Writing: Lisa convida a Meg. Depois ele faz um convite para um amigo, usando as frases na tela.",null),
+ rule("Modelo pronto",[],"Hi Tom, how are you? My family is going to the beach in July, and I'd like to invite you to come with us. Would you like to come? We're going to go fishing. You need sunglasses and a swimsuit. Please let me know if you can come. Love, Luquinhas.",[["Hi Tom, how are you?","Oi Tom, tudo bem?"],["My family is going to the beach in July.","Minha família vai à praia em julho."],["We're going to go fishing.","Nós vamos pescar."]],"Faça ele copiar o modelo trocando lugar, mês, atividade e objeto."),
+ game("Jogo: convida aí",[q("Alguém diz: I'm going to go diving in Greece! Melhor resposta:","That sounds amazing!",["I'm so sorry!","Are you OK?","Can you help me?"],"Plano legal, reação animada."),q("Qual NÃO serve para falar de plano legal?","I'm so sorry!",["That's awesome!","Oh, wow!","Are you excited?"],"Sorry é para pedir desculpa."),q("Para convidar:","I'd like to invite you",["Sorry, I can't","Thank you for your invitation","I'd love to come"],"I'd like to invite you = gostaria de te convidar."),q("Para aceitar:","I'd love to come.",["Sorry, I can't.","Would you like to come?","Are you OK?"],"Aceita: I'd love to come."),q("Para recusar com educação:","That sounds really good, but I can't.",["I'd love to come.","That's awesome!","Would you like to come?"],"Recusa: That sounds really good, but..."),q("Lisa: We're going to go diving. Meg: I'm visiting my grandmother in June. Quem não pode ir?","Meg",["Lisa","Luiz","Rafael"],"Meg vai visitar a avó."),q("Quem vai mandar fotos do ano passado?","Lisa",["Meg","Marina","Eva"],"Lisa: I'm sending you pictures from last year."),ord("Você gostaria de vir?","Would you like to come?"),ord("Obrigado pelo seu convite.","Thank you for your invitation."),ord("Por favor, me avise se puder vir.","Please let me know if you can come."),say("I'd like to invite you to my party.","Gostaria de te convidar para minha festa."),say("I'd love to come.","Eu adoraria ir.")])
+]},
+{id:"p17",line:"u10",code:"U10 306",name:"Camp e voluntariado",sub:"Leitura e Culture da Unit 10",slides:[
+ rule("Camp Little Bear",[],"Anúncio com atividades para as férias de verão. Procure a palavra-chave de cada curso.",[["Learn how to climb from professional climbers.","Aprenda a escalar com escaladores profissionais."],["You spend all day in the Fitness Center.","Você passa o dia todo no centro de ginástica."],["You can join a cooking competition.","Você pode entrar em uma competição de culinária."]],"Essa é uma técnica de prova: não traduza tudo. Procure a palavra que combina com a pergunta.",{h:["Curso","Do que trata"],r:[["Camping 101","barraca, achar comida, cozinhar na fogueira"],["Sports Camp","muito exercício, natação, competição no fim"],["Photography Camp","fotos de pessoas e natureza, mostra de arte"],["Climbing Camp","escalada; iniciantes e avançados"],["Cooking Camp","pizza a bolo, competição como na TV"]]}),
+ rule("Should: dar uma sugestão",[["Charlie","quem","s"],["should go","deveria ir","v"],["because...","motivo","c"]],"O livro pede: sugira uma solução e explique o porquê.",[["Charlie should go to Photography Camp because he can learn about art.","Charlie deveria ir ao Photography Camp porque pode aprender sobre arte."],["Magda should go to Camping 101 because she loves nature.","Magda deveria ir ao Camping 101 porque ama a natureza."],["Afonso should go to Cooking Camp because he likes to try different foods.","Afonso deveria ir ao Cooking Camp porque gosta de provar comidas diferentes."]],"Depois pergunte: Which camp is the best for you? Why?"),
+ talk("Voluntourism",["Junção de volunteer (voluntário) com tourism (turismo). A pessoa viaja e faz trabalho voluntário na mesma viagem."],"A foto do site Volunteering the world saiu cortada. O formulário do exercício 3 precisa ser feito olhando o livro.",["Exemplo do livro: Thailand, **help elephants**, **2 a 4 semanas**.","Ajuda a aprender sobre **outras culturas**.","Em inglês americano é **traveling**. No britânico, **travelling**."]),
+ game("Jogo: qual camp?",[q("You learn how to take pictures of trees and flowers at ___.","Photography Camp",["Cooking Camp","Sports Camp","Climbing Camp"],"Fotos: Photography."),q("You learn how to find food and cook it outside at ___.","Camping 101",["Sports Camp","Climbing Camp","Photography Camp"],"Comida na floresta: Camping 101."),q("You get lots of exercise at ___.","Sports Camp",["Cooking Camp","Photography Camp","Camping 101"],"Exercício: Sports Camp."),q("Students with or without experience can join the ___.","Climbing Camp",["Cooking Camp","Camping 101","Sports Camp"],"Beginners and advanced students are welcome."),q("Onde tem competição no fim?","Sports Camp and Cooking Camp",["Climbing Camp and Camping 101","Photography Camp only","Camping 101 only"],"Os dois têm competição."),q("Afonso prefers not to be outside and likes food:","Cooking Camp",["Camping 101","Climbing Camp","Sports Camp"],"Dentro e com comida."),q("Magda is afraid of high places. Ela NÃO deve ir ao:","Climbing Camp",["Camping 101","Cooking Camp","Photography Camp"],"Escalada tem altura."),q("Voluntourism significa:","ser turista e voluntário na mesma viagem",["só fazer turismo","trabalhar por salário","viajar sozinho"],"Volunteer + tourism."),ord("Ele deveria ir ao Sports Camp.","He should go to Sports Camp.",["goes"]),say("Which camp is the best for you?","Qual acampamento é o melhor para você?")])
+]}
+];
+const EXAM_TEXT="Last summer, Bruno went to Bahia with his family. First, they took a plane to Salvador. Then they went by bus to a small town. They stayed at a hotel near the beach. At first, Bruno was afraid of the ocean, but he learned to swim. He was very happy. Next year, his family is going to visit Chile.";
+const R=(p,a,o,tip)=>Object.assign(q(p,a,o,tip),{passage:EXAM_TEXT});
+const EXAM=[
+q("I ___ to the airport yesterday.","went",["go","goes","going"],"Yesterday pede passado: go vira went."),
+q("We took a ___ across the ocean.","boat",["tent","foot","ticket"],"Atravessar o mar: boat."),
+q("You can buy a ___ online for the bus.","ticket",["luggage","hotel","suitcase"],"Compra-se ticket."),
+q("___ you take a lot of bags?","Did",["Do","Were","Was"],"Passado com ação: Did."),
+q("___ you worried about the weather?","Were",["Did","Do","Was"],"Passado de to be com you: Were."),
+q("Did the dog ___ in the tent?","sleep",["slept","sleeps","sleeping"],"Depois de Did: verbo puro."),
+q("Where ___ you stay?","did",["was","were","do"],"Stay é ação: Where did you stay?"),
+q("Where ___ your first home?","was",["did","were","do"],"Your first home = it: was."),
+q("He didn't eat breakfast. He is very ___.","hungry",["angry","bored","afraid"],"Sem comer: hungry."),
+q("Jack has nothing to do. He is ___.","bored",["excited","hungry","worried"],"Sem nada para fazer: bored."),
+q("What is an anecdote?","a true, funny story",["a secret","an apology","a ticket"],"Anecdote é uma história curta e divertida."),
+q("Last word in the story:","Finally",["At first","Then","Next"],"Finally fecha a história."),
+ord("Montar: Eles foram fazer trilha?","Did they go hiking?",["went"],"Did + they + go hiking."),
+ord("Montar: O que você comeu?","What did you eat?",["ate"],"Depois de did: eat."),
+q("A ___ can help you see in the dark.","flashlight",["sunscreen","swimsuit","cooler"],"Lanterna = flashlight."),
+q("Most people sleep in a ___ when they go camping.","tent",["cooler","suitcase","ticket"],"Barraca = tent."),
+q("On a hot day, you should put ___ on your face.","sunscreen",["sunglasses","swim trunks","a tent"],"Protetor solar = sunscreen."),
+q("There was a lot of snow, so she went ___.","skiing",["diving","fishing","hang gliding"],"Neve: skiing."),
+q("Next week I ___ my friend.","'m visiting",["visit","visited","was visiting"],"Plano marcado: am + -ing."),
+q("What ___ you going to do next summer?","are",["is","did","do"],"You: are going to."),
+q("She is going to ___ a camera.","take",["took","taking","takes"],"Going to + verbo puro."),
+ord("Montar: Eu vou aprender a nadar.","I'm going to learn to swim.",["learned"],"Going to + verbo puro."),
+q("To invite a friend you write:","Would you like to come?",["Sorry, I can't.","Thank you for your invitation.","Are you OK?"],"Convite: Would you like to come?"),
+q("To accept an invitation you write:","I'd love to come.",["Sorry, I can't.","That sounds bad.","Can you help me?"],"Aceitar: I'd love to come."),
+R("How did Bruno's family get to Salvador?","By plane.",["By boat.","On foot.","By train."],"They took a plane to Salvador."),
+R("Where did they stay?","At a hotel.",["In a tent.","At home.","At school."],"They stayed at a hotel."),
+R("How did Bruno feel about the ocean at first?","afraid",["bored","hungry","angry"],"Bruno was afraid of the ocean."),
+R("Did Bruno learn to swim?","Yes, he did.",["No, he didn't.","Yes, he was.","No, he wasn't."],"He learned to swim."),
+R("What is the family going to do next year?","visit Chile",["go to Bahia","learn to swim","stay at home"],"His family is going to visit Chile."),
+R("Which is about the future?","is going to visit",["took a plane","went by bus","was very happy"],"Going to fala do futuro.")
+];
+
+const $app=document.getElementById("app");
+const EXAM_DATE=new Date(2026,11,3);
+const KEY="passaporte-luquinhas-v1";
+let S={stars:{},miles:0,best:0,exam:null,errs:{},note:true,snd:true};
+try{const r=localStorage.getItem(KEY);if(r)S=Object.assign(S,JSON.parse(r));}catch(e){}
+const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){}};
+const shuffle=a=>{a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;};
+function h(t,a,...k){const e=document.createElement(t);for(const x in(a||{})){if(x==="on")for(const ev in a.on)e.addEventListener(ev,a.on[ev]);else if(x==="cls")e.className=a[x];else if(x==="html")e.innerHTML=a[x];else if(a[x]!==false&&a[x]!=null)e.setAttribute(x,a[x]);}k.flat().forEach(c=>{if(c!=null)e.append(c);});return e;}
+const esc=s=>String(s).replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));
+const fmt=s=>esc(s).replace(/\*\*(.+?)\*\*/g,"<mark>$1</mark>");
+function toast(m){document.querySelectorAll(".toast").forEach(t=>t.remove());const t=h("div",{cls:"toast",role:"status"},m);document.body.append(t);setTimeout(()=>t.remove(),3200);}
+
+/* som e voz */
+let ac=null;
+function tone(f,d,w,at){if(!S.snd)return;try{ac=ac||new (window.AudioContext||window.webkitAudioContext)();const o=ac.createOscillator(),g=ac.createGain(),t=ac.currentTime+(at||0);o.type=w||"square";o.frequency.value=f;g.gain.setValueAtTime(.05,t);g.gain.exponentialRampToValueAtTime(.001,t+d);o.connect(g).connect(ac.destination);o.start(t);o.stop(t+d);}catch(e){}}
+const sfx={ok(){tone(660,.09);tone(990,.14,0,.09);},bad(){tone(180,.22,"sawtooth");},win(){[523,659,784,1047].forEach((f,i)=>tone(f,.16,0,i*.12));},tap(){tone(420,.03);}};
+let warned=false;
+function speak(t){const sy=window.speechSynthesis;if(!sy||!window.SpeechSynthesisUtterance){if(!warned){warned=true;toast("Este aparelho não tem voz em inglês. Use a pronúncia escrita e leia em voz alta.");}return;}try{sy.cancel();const u=new SpeechSynthesisUtterance(t);u.lang="en-US";u.rate=.85;const v=sy.getVoices().find(x=>/^en[-_]US/i.test(x.lang))||sy.getVoices().find(x=>/^en/i.test(x.lang));if(v)u.voice=v;sy.speak(u);}catch(e){}}
+
+/* painel */
+const allDone=()=>PHASES.filter(p=>S.stars[p.id]).length;
+const daysLeft=()=>{const n=new Date();n.setHours(0,0,0,0);return Math.max(0,Math.round((EXAM_DATE-n)/864e5));};
+function flaps(txt,start){return h("div",{cls:"flaps","aria-hidden":"true"},[...txt].map((c,i)=>h("span",{cls:"flap"+(c===" "?" sp":""),style:"--i:"+(i+(start||0))},c===" "?"":c)));}
+function home(){
+ window.speechSynthesis&&window.speechSynthesis.cancel();
+ const next=PHASES.find(p=>!S.stars[p.id]);
+ const errN=Object.keys(S.errs).length;
+ const w=h("div",{cls:"wrap"},
+  h("header",{cls:"hero"},h("div",{cls:"eyebrow"},"Inglês · 6º ano · 4ª unidade"),h("h1",{style:"position:absolute;width:1px;height:1px;overflow:hidden"},"Passaporte do Luquinhas"),flaps("PASSAPORTE"),flaps("LUQUINHAS",10)),
+  h("div",{cls:"stats"},
+   h("div",{cls:"stat"},h("b",null,daysLeft()),h("span",null,"dias até 03/12")),
+   h("div",{cls:"stat"},h("b",null,S.miles),h("span",null,"milhas")),
+   h("div",{cls:"stat"},h("b",null,allDone()+"/"+PHASES.length),h("span",null,"carimbos"))),
+  h("details",{cls:"howto"},h("summary",null,"Como dar a aula"),h("ol",null,
+   ["Abra um voo por vez. Cada um leva de 15 a 25 minutos.","Sentem juntos. A faixa TIO em cada tela diz o que fazer. Dá para esconder no botão Dica.","Toque nos cartões e peça para ele repetir em voz alta.","No jogo, cada erro dá 1 ponto para o tio. A questão errada volta no fim.","Comece cada aula com 1 Corrida de 60 segundos. Termine resolvendo no livro o exercício indicado."].map(x=>h("li",null,x)))),
+  h("div",{cls:"mini","aria-label":"Carimbos"},PHASES.map((p,i)=>h("span",{cls:S.stars[p.id]?"on":""},i+1))),
+  LINES.map(L=>h("section",{cls:"line"},h("h2",null,L.name),h("p",null,L.sub),h("div",{cls:"rows"},PHASES.filter(p=>p.line===L.id).map(p=>{
+    const st=S.stars[p.id];
+    return h("button",{cls:"row",on:{click:()=>lesson(p,0)}},h("span",{cls:"code"},p.code),h("span",{cls:"dest"},p.name,h("small",null,p.sub)),
+     st?h("span",{cls:"st done"},"★".repeat(st)):p===next?h("span",{cls:"st next"},"EMBARQUE"):h("span",{cls:"st"},"AGENDADO"));
+  })))),
+  h("div",{cls:"extras"},
+   h("button",{cls:"extra big",on:{click:examStart}},h("b",null,"Simulado final"),h("span",null,S.exam!=null?"Última nota: "+S.exam.toFixed(1)+". 30 questões das Units 9 e 10.":"30 questões das Units 9 e 10, sem dicas, com nota de 0 a 10.")),
+   h("button",{cls:"extra",on:{click:sprint}},h("b",null,"Corrida 60s"),h("span",null,"Recorde: "+S.best+" palavras")),
+   h("button",{cls:"extra",on:{click:review},disabled:errN?false:true},h("b",null,"Revisar erros"),h("span",null,errN?errN+" questões guardadas":"Nenhuma questão guardada")),
+   h("button",{cls:"extra",style:"grid-column:1/-1;min-height:64px",on:{click:dict}},h("b",null,"Dicionário das Units"),h("span",null,"Todas as palavras, com som e pronúncia"))),
+  h("a",{href:"../index.html",cls:"reset"},"Voltar para a Trilha"),
+  resetBtn());
+ $app.replaceChildren(h("main",{cls:"scroll"},w));
+}
+function resetBtn(){let n=0;const b=h("button",{cls:"reset",on:{click(){if(n++){S={stars:{},miles:0,best:0,exam:null,errs:{},note:true,snd:S.snd};save();home();toast("Progresso apagado.");}else{b.textContent="Toque de novo para confirmar";setTimeout(()=>{n=0;b.textContent="Apagar progresso";},3000);}}}},"Apagar progresso");return b;}
+
+/* barra */
+function bar(ttl,code){return h("div",{cls:"top"},h("button",{cls:"ico",on:{click:home}},"‹ Painel"),h("div",{cls:"ttl"},code?h("small",null,code):null,ttl),h("span",{cls:"miles",id:"mi"},S.miles+" mi"),
+ h("button",{cls:"ico","aria-pressed":String(S.snd),on:{click(e){S.snd=!S.snd;save();e.currentTarget.setAttribute("aria-pressed",S.snd);e.currentTarget.textContent=S.snd?"Som":"Mudo";}}},S.snd?"Som":"Mudo"));}
+function addMiles(n){S.miles+=n;save();const m=document.getElementById("mi");if(m)m.textContent=S.miles+" mi";}
+const STUB={talk:"Conversa",rule:"Regra",words:"Palavras",game:"Jogo"};
+
+/* aula */
+function lesson(p,i){
+ const s=p.slides[i];
+ const note=s.note?h("div",{cls:"note",id:"nt"},h("b",null,"TIO"),s.note):null;
+ if(note)note.hidden=!S.note;
+ const tog=s.note?h("button",{cls:"ico hideS2","aria-pressed":String(S.note),on:{click(e){S.note=!S.note;save();note.hidden=!S.note;e.currentTarget.setAttribute("aria-pressed",S.note);}}},"Dica"):null;
+ const stage=h("div",{cls:"wrap"});
+ const go=(n)=>{if(n<0)return home();if(n>=p.slides.length)return home();lesson(p,n);};
+ const next=h("button",{cls:"nav go",on:{click:()=>go(i+1)}},s.t==="game"?"Pular jogo":i===p.slides.length-1?"Fechar":"Avançar ›");
+ const finishGame=(r)=>{stamp(p,i,r);};
+ const card=s.t==="game"?gameCard(p,s,finishGame,next):slideCard(p,s,i);
+ if(note)stage.append(note);stage.append(card);
+ const pct=p.slides.length>1?(i/(p.slides.length-1))*100:100;
+ $app.replaceChildren(bar(p.name,p.code),h("main",{cls:"scroll"},stage),
+  h("div",{cls:"bottom"},h("button",{cls:"nav",on:{click:()=>go(i-1)}},"‹"),tog,
+   h("div",{cls:"route","aria-hidden":"true"},h("span",{cls:"plane",style:"left:calc(10px + (100% - 20px)*"+pct/100+")"},"✈")),
+   h("span",{cls:"miles hideS"},(i+1)+"/"+p.slides.length),next));
+ window.onkeydown=e=>{if(e.target.tagName==="INPUT")return;if(e.key==="ArrowRight"&&s.t!=="game")go(i+1);if(e.key==="ArrowLeft")go(i-1);};
+}
+function stubEl(l,r){return h("div",{cls:"stub"},h("span",null,l),h("span",null,r));}
+function exRows(ex){return h("div",{cls:"ex"},ex.map(([en,pt])=>h("button",{cls:"exrow",on:{click:()=>speak(en)}},h("span",{cls:"sp","aria-hidden":"true"},"▶"),h("span",null,h("div",{cls:"en"},en),h("div",{cls:"pt"},pt)))));}
+function slideCard(p,s,i){
+ const b=h("div",{cls:"body"},h("h1",null,s.h));
+ if(s.t==="talk"){(s.p||[]).forEach(x=>b.append(h("p",{html:fmt(x)})));if(s.list)b.append(h("ul",{cls:"big"},s.list.map(x=>h("li",{html:fmt(x)}))));}
+ if(s.t==="rule"){
+  if(s.f&&s.f.length)b.append(h("div",{cls:"formula"},s.f.map(([w,l,c])=>h("div",{cls:"chip c-"+c},w,h("small",null,l)))));
+  if(s.p)b.append(h("p",{html:fmt(s.p)}));
+  if(s.table)b.append(h("div",{cls:"tbl"},h("table",null,h("thead",null,h("tr",null,s.table.h.map(x=>h("th",null,x)))),h("tbody",null,s.table.r.map(r=>h("tr",null,r.map(c=>h("td",null,c))))))));
+  if(s.ex)b.append(exRows(s.ex));
+ }
+ if(s.t==="words"){
+  let o=0;const cnt=h("div",{cls:"count"},"0 de "+s.w.length+" abertas");
+  b.append(h("div",{cls:"cards"},s.w.map(([pic,w,pr,tr])=>{const t=h("div",{cls:"tr"},"Toque");const c=h("button",{cls:"card",on:{click(){speak(w);if(!c.classList.contains("open")){c.classList.add("open");t.textContent=tr;o++;cnt.textContent=o+" de "+s.w.length+" abertas";}}}},h("div",{cls:"pic","aria-hidden":"true"},pic),h("div",{cls:"w"},w),h("div",{cls:"pr"},pr),t);return c;})),cnt);
+ }
+ return h("article",{cls:"pass"},stubEl(STUB[s.t],p.code+" · "+(i+1)+"/"+p.slides.length),b);
+}
+
+/* motor de jogo */
+function itemKey(p,i){return p+":"+i;}
+function runGame(body,items,opt,done){
+ let queue=items.map((it,n)=>({it,n,retry:false})),cur=null,score=0,errs=0,total=items.length,finished=0;
+ const area=h("div",{style:"display:flex;flex-direction:column;gap:14px"});
+ const sc=h("div",{cls:"score"}),br=h("div",{cls:"bar"},h("i"));
+ const paint=()=>{sc.replaceChildren(h("span",null,"LUQUINHAS ",h("b",null,score)),h("span",null,finished+"/"+total),h("span",null,h("b",null,errs)," TIO"));br.firstChild.style.width=(finished/total*100)+"%";};
+ if(!opt.exam)body.append(sc);body.append(br,area);
+ const step=()=>{paint();if(!queue.length)return done({score,errs,total});cur=queue.shift();draw(cur);};
+ const after=(ok,tip,en)=>{
+  const c=cur;
+  if(ok){sfx.ok();score++;if(!c.retry)addMiles(10);else addMiles(5);finished++;if(opt.onRight)opt.onRight(c);}
+  else{sfx.bad();errs++;if(c.it.k!=="m")queue.push({it:c.it,n:c.n,retry:true});else finished++;if(opt.onWrong)opt.onWrong(c);}
+  if(en&&ok)speak(en);
+  paint();
+  area.append(h("div",{cls:"fb "+(ok?"ok":"bad"),role:"status"},h("div",{html:(ok?"<b>Isso!</b> ":"<b>Ponto do tio.</b> ")+fmt(tip||"")}),h("button",{cls:"act",on:{click:step}},queue.length?"Continuar":"Ver resultado")));
+  area.lastChild.scrollIntoView&&area.lastChild.scrollIntoView({block:"nearest"});
+ };
+ function draw(c){
+  const it=c.it;area.replaceChildren();
+  if(c.retry)area.append(h("div",{cls:"count"},"Segunda chance"));
+  ({q:drawQ,l:drawL,o:drawO,m:drawM,s:drawS})[it.k](it);
+ }
+ function buttons(it,en){const opts=h("div",{cls:"opts"},shuffle([it.a,...it.o]).map(t=>h("button",{cls:"opt","data-v":t,on:{click(e){
+   if(opt.exam)return opt.answer(cur,t,step);
+   const ok=t===it.a;[...opts.children].forEach(b=>{b.disabled=true;if(b.dataset.v===it.a)b.classList.add("ok");else if(b===e.currentTarget)b.classList.add("bad");else b.classList.add("dim");});
+   after(ok,ok?(it.tip||""):("Resposta: **"+it.a+"**. "+(it.tip||"")),en?en(it):null);}}},t)));return opts;}
+ function drawQ(it){if(it.passage)area.append(h("div",{cls:"passage"},it.passage));area.append(h("div",{cls:"prompt"},it.p),buttons(it,i=>i.p.includes("___")?i.p.replace("___",i.a):null));}
+ function drawL(it){speak(it.w);const reveal=h("button",{cls:"link",on:{click(){reveal.replaceWith(h("div",{cls:"bigword"},it.w));}}},"Sem som? Mostrar a palavra para o tio ler");area.append(h("div",{cls:"prompt",style:"text-align:center"},"O que significa o que você ouviu?"),h("button",{cls:"listen",on:{click:()=>speak(it.w)}},"Ouvir"),reveal,buttons(it));}
+ function drawO(it){
+  const tok=(it.letters?it.s.split(""):it.s.split(" ")).map(t=>t),all=shuffle([...tok,...it.x]);
+  const slot=h("div",{cls:"slot"}),tiles=h("div",{cls:"tiles"});let picked=[];
+  const check=h("button",{cls:"act",disabled:true,on:{click(){
+    const ans=picked.map(p=>p.t).join(it.letters?"":" ");
+    if(opt.exam)return opt.answer(cur,ans,step);
+    const ok=ans===it.s;[...tiles.children,...slot.children].forEach(b=>b.disabled=true);check.remove();
+    after(ok,ok?(it.tip||""):("O certo é: **"+it.s+"** "+(it.tip||"")),it.letters?null:it.s);}}},"Conferir");
+  const redo=()=>{slot.replaceChildren(...picked.map((p,i)=>h("button",{cls:"tile",on:{click(){p.b.classList.remove("used");picked.splice(i,1);redo();}}},p.t)));check.disabled=!picked.length;};
+  all.forEach(t=>{const b=h("button",{cls:"tile",on:{click(){if(b.classList.contains("used"))return;sfx.tap();b.classList.add("used");picked.push({t,b});redo();}}},t);tiles.append(b);});
+  area.append(h("div",{cls:"count"},it.letters?"Coloque as letras em ordem":"Monte a frase em inglês"),h("div",{cls:"ptline"},it.pt),slot,tiles,check);
+ }
+ function drawM(it){
+  const L=shuffle(it.p),Rr=shuffle(it.p);let sel=null,left=it.p.length,miss=0;
+  const col1=h("div"),col2=h("div");
+  L.forEach(p=>{const b=h("button",{cls:"pairb",on:{click(){if(b.disabled)return;speak(p[0]);col1.querySelectorAll(".sel").forEach(x=>x.classList.remove("sel"));b.classList.add("sel");sel={p,b};}}},p[0]);col1.append(b);});
+  Rr.forEach(p=>{const b=h("button",{cls:"pairb",on:{click(){if(!sel||b.disabled)return;
+    if(sel.p===p){sfx.ok();sel.b.className="pairb hit";b.className="pairb hit";sel.b.disabled=true;b.disabled=true;sel=null;left--;if(!left){score++;addMiles(10);finished++;paint();area.append(h("div",{cls:"fb ok",role:"status"},h("div",{html:"<b>Tudo ligado!</b> "+(miss?miss+" erro(s) foram para o tio.":"Sem nenhum erro.")}),h("button",{cls:"act",on:{click:step}},queue.length?"Continuar":"Ver resultado")));}}
+    else{sfx.bad();miss++;errs++;paint();b.classList.add("miss");setTimeout(()=>b.classList.remove("miss"),350);}}}},p[1]);col2.append(b);});
+  area.append(h("div",{cls:"prompt"},"Ligue as duplas: toque na esquerda, depois na direita"),h("div",{cls:"pair"},col1,col2));
+ }
+ function drawS(it){
+  speak(it.en);
+  area.append(h("div",{cls:"count"},"Fala comigo: ele repete em voz alta"),h("div",{cls:"prompt"},it.en),h("div",{cls:"pt"},it.pt),
+   h("div",{cls:"saybtns"},h("button",{cls:"act alt",on:{click:()=>speak(it.en)}},"Ouvir"),h("button",{cls:"act alt",on:{click(){sfx.tap();toast("Sem ponto para o tio. Tenta de novo!");speak(it.en);}}},"Repete"),h("button",{cls:"act",on:{click(){sfx.ok();score++;finished++;addMiles(5);step();}}},"Falou certo")));
+ }
+ step();
+}
+function gameCard(p,s,finish,next){
+ const body=h("div",{cls:"body"},h("h1",null,s.h));
+ runGame(body,s.items,{
+  onWrong(c){if(c.it.k!=="m"&&c.it.k!=="s"){S.errs[itemKey(p.id,c.n)]=1;save();}},
+  onRight(c){if(c.retry){}}
+ },r=>{next.textContent="Fechar";finish(r);});
+ return h("article",{cls:"pass"},stubEl("Jogo",p.code),body);
+}
+function stamp(p,i,r){
+ window.onkeydown=null;
+ const st=r.errs===0?3:r.errs<=3?2:1;const prev=S.stars[p.id]||0;S.stars[p.id]=Math.max(prev,st);addMiles(st*20);sfx.win();
+ const idx=PHASES.indexOf(p),nx=PHASES[idx+1];
+ const win=r.score>r.errs;
+ $app.replaceChildren(bar(p.name,p.code),h("main",{cls:"scroll"},h("div",{cls:"wrap"},h("article",{cls:"pass"},stubEl("Carimbado",p.code),h("div",{cls:"body result"},
+  h("div",{cls:"stamp"},h("small",null,"APROVADO"),p.name,h("small",null,p.code)),h("div",{cls:"stars","aria-label":st+" estrelas"},"★".repeat(st)+"☆".repeat(3-st)),
+  h("h1",null,win?"Luquinhas ganhou do tio!":"O tio ganhou essa. Revanche?"),
+  h("p",null,"Luquinhas "+r.score+" × "+r.errs+" Tio · +"+(st*20)+" milhas de bônus"),
+  h("div",{cls:"saybtns"},h("button",{cls:"act alt",on:{click:()=>lesson(p,i)}},"Jogar de novo"),nx?h("button",{cls:"act",on:{click:()=>lesson(nx,0)}},"Próximo voo"):h("button",{cls:"act",on:{click:examStart}},"Fazer o simulado"),h("button",{cls:"act alt",on:{click:home}},"Painel")))))));
+}
+
+/* simulado */
+function examStart(){
+ window.onkeydown=null;
+ const body=h("div",{cls:"body"},h("h1",null,"Simulado final"),h("p",null,"Sem dicas e sem o tio ajudar. O resultado aparece no fim."));
+ const res=[];
+ runGame(body,EXAM,{exam:true,answer(c,v,step){res.push({it:c.it,v,ok:v===(c.it.k==="o"?c.it.s:c.it.a)});sfx.tap();step();}},()=>{
+  const ok=res.filter(r=>r.ok).length,nota=ok/res.length*10;S.exam=nota;save();addMiles(ok*5);sfx.win();
+  const wrong=res.filter(r=>!r.ok);
+  $app.replaceChildren(bar("Resultado"),h("main",{cls:"scroll"},h("div",{cls:"wrap"},h("article",{cls:"pass"},stubEl("Resultado","Simulado"),h("div",{cls:"body result"},h("div",{cls:"grade"},nota.toFixed(1)),h("p",null,ok+" de "+res.length+" certas. "+(nota>=9?"Pronto para a prova.":nota>=7?"Bom. Revise as questões abaixo.":"Precisa repetir os voos das questões abaixo.")),
+   wrong.length?h("div",{cls:"review"},wrong.map(r=>h("div",null,h("b",null,r.it.p||r.it.pt),h("br"),"Você: "+r.v+" · Certo: "+(r.it.a||r.it.s)+". "+(r.it.tip||"")))):null,
+   h("div",{cls:"saybtns"},h("button",{cls:"act alt",on:{click:examStart}},"Refazer"),h("button",{cls:"act",on:{click:home}},"Painel")))))));
+ });
+ $app.replaceChildren(bar("Simulado"),h("main",{cls:"scroll"},h("div",{cls:"wrap"},h("article",{cls:"pass"},stubEl("Prova","Units 9 e 10"),body))));
+}
+
+/* corrida */
+function pool(){const m=new Map();PHASES.forEach(p=>p.slides.forEach(s=>{if(s.t==="words")s.w.forEach(w=>m.set(w[1],w));}));return [...m.values()];}
+function sprint(){
+ window.onkeydown=null;
+ const all=pool();let hits=0,end=Date.now()+60000,t;
+ const fill=h("i",{style:"width:100%"}),word=h("div",{cls:"bigword"}),opts=h("div",{cls:"opts"}),sc=h("div",{cls:"score"});
+ const finish=()=>{clearInterval(t);const rec=hits>S.best;if(rec){S.best=hits;}addMiles(hits*2);save();sfx.win();
+  $app.replaceChildren(bar("Corrida 60s"),h("main",{cls:"scroll"},h("div",{cls:"wrap"},h("article",{cls:"pass"},stubEl("Tempo","Corrida"),h("div",{cls:"body result"},h("div",{cls:"grade"},hits),h("h1",null,rec?"Novo recorde!":"Palavras certas"),h("p",null,"Recorde: "+S.best),h("div",{cls:"saybtns"},h("button",{cls:"act alt",on:{click:sprint}},"De novo"),h("button",{cls:"act",on:{click:home}},"Painel")))))));};
+ const nextW=()=>{const w=all[Math.floor(Math.random()*all.length)];word.textContent=w[1];speak(w[1]);sc.replaceChildren(h("span",null,"Certas ",h("b",null,hits)));
+  const others=shuffle(all.filter(x=>x[3]!==w[3])).reduce((a,x)=>{if(!a.includes(x[3])&&a.length<3)a.push(x[3]);return a;},[]);
+  opts.replaceChildren(...shuffle([w[3],...others]).map(t=>h("button",{cls:"opt",on:{click(){if(t===w[3]){hits++;sfx.ok();}else sfx.bad();nextW();}}},t)));};
+ $app.replaceChildren(bar("Corrida 60s"),h("main",{cls:"scroll"},h("div",{cls:"wrap"},h("article",{cls:"pass"},stubEl("Corrida","60 segundos"),h("div",{cls:"body"},h("div",{cls:"timer"},fill),sc,word,opts)))));
+ t=setInterval(()=>{if(!fill.isConnected)return clearInterval(t);const left=end-Date.now();fill.style.width=Math.max(0,left/600)+"%";if(left<=0)finish();},150);
+ nextW();
+}
+
+/* revisão */
+function review(){
+ window.onkeydown=null;
+ const keys=Object.keys(S.errs),items=[];
+ keys.forEach(k=>{const [pid,n]=k.split(":");const p=PHASES.find(x=>x.id===pid);if(!p)return;const g=p.slides.find(s=>s.t==="game");if(g&&g.items[n])items.push(Object.assign({},g.items[n],{_k:k}));});
+ if(!items.length){S.errs={};save();return home();}
+ const body=h("div",{cls:"body"},h("h1",null,"Revisar erros"));
+ runGame(body,shuffle(items),{onRight(c){delete S.errs[c.it._k];save();}},()=>{sfx.win();home();toast("Revisão terminada.");});
+ $app.replaceChildren(bar("Revisar erros"),h("main",{cls:"scroll"},h("div",{cls:"wrap"},h("article",{cls:"pass"},stubEl("Revisão",items.length+" questões"),body))));
+}
+
+/* dicionário */
+function dict(){
+ window.onkeydown=null;
+ const all=pool().sort((a,b)=>a[1].localeCompare(b[1]));
+ const list=h("div",{cls:"ex"});
+ const draw=f=>{const v=f.trim().toLowerCase();list.replaceChildren(...all.filter(w=>!v||w[1].toLowerCase().includes(v)||w[3].toLowerCase().includes(v)).map(w=>h("button",{cls:"exrow",on:{click:()=>speak(w[1])}},h("span",{cls:"sp","aria-hidden":"true"},"▶"),h("span",null,h("div",{cls:"en"},w[1]+"  ",h("small",{style:"font-family:var(--mono);font-weight:400;color:var(--muted)"},"["+w[2]+"]")),h("div",{cls:"pt"},w[3])))));};
+ const inp=h("input",{cls:"search",id:"busca",type:"search",placeholder:"Buscar em inglês ou português","aria-label":"Buscar palavra",on:{input:e=>draw(e.target.value)}});
+ draw("");
+ $app.replaceChildren(bar("Dicionário"),h("main",{cls:"scroll"},h("div",{cls:"wrap"},h("article",{cls:"pass"},stubEl("Dicionário",all.length+" palavras"),h("div",{cls:"body"},inp,list)))));
+}
+home();
+</script>
+
+</body></html>

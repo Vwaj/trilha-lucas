@@ -2,10 +2,11 @@
    service-worker.js — Cache do "app shell" para uso offline
    ============================================================ */
 
-const CACHE_NAME = "trilha-v4";
+const CACHE_NAME = "trilha-v5";
 const APP_SHELL = [
   "./",
   "./index.html",
+  "./passaporte/index.html",
   "./css/style.css",
   "./js/data.js",
   "./js/storage.js",
